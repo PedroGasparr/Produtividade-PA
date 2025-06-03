@@ -112,10 +112,28 @@ function setupEventListeners() {
 }
 
 function switchCamera() {
-    if (cameras.length < 2) return;
+    console.log('Tentando trocar de câmera. Câmeras disponíveis:', cameras);
+    
+    if (cameras.length < 2) {
+        console.log('Menos de 2 câmeras disponíveis. Não é possível trocar.');
+        return;
+    }
     
     currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
-    qrScanner.start(cameras[currentCameraIndex]);
+    console.log('Mudando para câmera:', currentCameraIndex, cameras[currentCameraIndex]);
+    
+    if (qrScanner) {
+        qrScanner.stop().then(() => {
+            console.log('Scanner parado com sucesso');
+            qrScanner.start(cameras[currentCameraIndex]).then(() => {
+                console.log('Scanner iniciado com nova câmera');
+            }).catch(err => {
+                console.error('Erro ao iniciar scanner com nova câmera:', err);
+            });
+        }).catch(err => {
+            console.error('Erro ao parar scanner:', err);
+        });
+    }
 }
 
 let currentFinishCameraIndex = 0;
