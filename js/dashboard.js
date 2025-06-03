@@ -1,58 +1,66 @@
-// dashboard.js
-// Inicialização do Firebase
+// Configuração do Firebase
 const db = firebase.database();
 
-let currentCameraIndex = 0;
-let cameras = [];
-let currentFinishCameraIndex = 0;
-
-// Elementos da página
-const startLoadingBtn = document.getElementById('startLoadingBtn');
-const finishLoadingBtn = document.getElementById('finishLoadingBtn');
-const pauseBtn = document.getElementById('pauseBtn');
-const operationsGrid = document.getElementById('operationsGrid');
-
-// Modais
-const startLoadingModal = document.getElementById('startLoadingModal');
-const finishLoadingModal = document.getElementById('finishLoadingModal');
-const pauseModal = document.getElementById('pauseModal');
-
-// Variáveis de estado
-let currentOperations = [];
+// Variáveis globais
 let currentUser = null;
 let qrScanner = null;
 let finishQrScanner = null;
-let operationsRef = null;
-let operationsListener = null;
+let currentOperations = [];
+let cameras = [];
+let currentCameraIndex = 0;
+
+// Elementos da página
+const elements = {
+    startLoadingBtn: document.getElementById('startLoadingBtn'),
+    finishLoadingBtn: document.getElementById('finishLoadingBtn'),
+    operationsGrid: document.getElementById('operationsGrid'),
+    startLoadingModal: document.getElementById('startLoadingModal'),
+    finishLoadingModal: document.getElementById('finishLoadingModal'),
+    currentUser: document.getElementById('currentUser'),
+    
+    // Modal de Início
+    qrScanner: document.getElementById('qrScanner'),
+    startScannerBtn: document.getElementById('startScannerBtn'),
+    operatorName: document.getElementById('operatorName'),
+    operatorInfo: document.getElementById('operatorInfo'),
+    dtNumber: document.getElementById('dtNumber'),
+    vehicleType: document.getElementById('vehicleType'),
+    dockNumber: document.getElementById('dockNumber'),
+    confirmLoadingBtn: document.getElementById('confirmLoadingBtn'),
+    cancelLoadingBtn: document.getElementById('cancelLoadingBtn'),
+    scanFeedback: document.getElementById('scanFeedback'),
+    
+    // Modal de Finalização
+    finishQrScanner: document.getElementById('finishQrScanner'),
+    startFinishScannerBtn: document.getElementById('startFinishScannerBtn'),
+    operatorFinishName: document.getElementById('operatorFinishName'),
+    operatorFinishInfo: document.getElementById('operatorFinishInfo'),
+    bindersList: document.getElementById('bindersList'),
+    confirmFinishBtn: document.getElementById('confirmFinishBtn'),
+    cancelFinishBtn: document.getElementById('cancelFinishBtn'),
+    finishScanFeedback: document.getElementById('finishScanFeedback'),
+    finishModalTitle: document.getElementById('finishModalTitle')
+};
 
 // Inicialização do dashboard
-// No início do seu arquivo JavaScript
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Verificando elementos críticos...');
-    const criticalElements = [
-        'dtNumber', 'vehicleType', 'dockNumber', 
-        'operatorName', 'operatorInfo', 'confirmLoadingBtn'
-    ];
-
-    criticalElements.forEach(id => {
-        const el = document.getElementById(id);
-        console.log(`Elemento #${id}:`, el ? 'OK' : 'NÃO ENCONTRADO');
-        if (!el) {
-            console.error(`Elemento crítico faltando: #${id}`);
+    // Verificar autenticação
+    firebase.auth().onAuthStateChanged(user => {
+        if (!user) {
+            window.location.href = 'index.html';
+        } else {
+            currentUser = user;
+            elements.currentUser.textContent = user.displayName || user.email;
+            initializeOperations();
+            setupEventListeners();
         }
     });
 });
 
 function initializeOperations() {
-    operationsRef = db.ref('operations');
-    
-    if (operationsListener) {
-        operationsRef.off('value', operationsListener);
-    }
-    
-    operationsListener = operationsRef.on('value', snapshot => {
+    db.ref('operations').on('value', snapshot => {
         currentOperations = [];
-        operationsGrid.innerHTML = '';
+        elements.operationsGrid.innerHTML = '';
         
         snapshot.forEach(childSnapshot => {
             const operation = { id: childSnapshot.key, ...childSnapshot.val() };
@@ -62,107 +70,8 @@ function initializeOperations() {
             }
         });
         
-        finishLoadingBtn.disabled = currentOperations.length === 0;
-        pauseBtn.disabled = currentOperations.length === 0;
-        
-        // Iniciar atualização contínua dos tempos
-        startTimeUpdates();
+        elements.finishLoadingBtn.disabled = currentOperations.length === 0;
     });
-}
-function getElementSafe(id, context = '') {
-    const el = document.getElementById(id);
-    if (!el) {
-        console.error(`Elemento não encontrado: #${id}`, context);
-        return document.createElement('div'); // Retorna elemento vazio como fallback
-    }
-    return el;
-}
-
-let timeUpdateInterval = null;
-
-function startTimeUpdates() {
-    if (timeUpdateInterval) {
-        clearInterval(timeUpdateInterval);
-    }
-    
-    timeUpdateInterval = setInterval(() => {
-        currentOperations.forEach(op => {
-            const card = document.querySelector(`.operation-card[data-id="${op.id}"]`);
-            if (card) {
-                const elapsedTime = calculateElapsedTime(op);
-                const timeElement = card.querySelector('.operation-card-time');
-                if (timeElement) {
-                    timeElement.textContent = formatTime(elapsedTime);
-                }
-            }
-        });
-    }, 1000);
-}
-
-function setupEventListeners() {
-    startLoadingBtn.addEventListener('click', () => {
-        resetStartLoadingForm();
-        startLoadingModal.style.display = 'flex';
-    });
-    
-    finishLoadingBtn.addEventListener('click', () => {
-        // Não faz nada, pois a finalização é feita pelos cards individuais
-    });
-    
-    document.getElementById('switchCameraBtn').addEventListener('click', switchCamera);
-    document.getElementById('switchFinishCameraBtn').addEventListener('click', switchFinishCamera);
-
-    pauseBtn.addEventListener('click', () => showPauseModal());
-
-    document.querySelectorAll('.close-modal').forEach(btn => {
-        btn.addEventListener('click', () => {
-            startLoadingModal.style.display = 'none';
-            finishLoadingModal.style.display = 'none';
-            pauseModal.style.display = 'none';
-            stopAllScanners();
-        });
-    });
-
-    document.getElementById('startScannerBtn').addEventListener('click', startScanner);
-    document.getElementById('cancelLoadingBtn').addEventListener('click', () => {
-        startLoadingModal.style.display = 'none';
-        stopAllScanners();
-    });
-    document.getElementById('confirmLoadingBtn').addEventListener('click', confirmStartLoading);
-
-    document.getElementById('startFinishScannerBtn').addEventListener('click', startFinishScanner);
-    document.getElementById('cancelFinishBtn').addEventListener('click', () => {
-        finishLoadingModal.style.display = 'none';
-        stopAllScanners();
-    });
-
-    document.getElementById('cancelPauseBtn').addEventListener('click', () => pauseModal.style.display = 'none');
-    document.getElementById('confirmPauseBtn').addEventListener('click', confirmPause);
-
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-        firebase.auth().signOut().then(() => {
-            window.location.href = 'index.html';
-        });
-    });
-}
-
-function switchCamera() {
-    if (cameras.length < 2) return;
-    
-    currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
-    
-    if (qrScanner) {
-        qrScanner.stop().then(() => {
-            qrScanner.start(cameras[currentCameraIndex]);
-        });
-    }
-}
-
-function switchFinishCamera() {
-    if (cameras.length < 2) return;
-    
-    currentFinishCameraIndex = (currentFinishCameraIndex + 1) % cameras.length;
-    finishQrScanner.start(cameras[currentFinishCameraIndex]);
 }
 
 function renderOperationCard(operation) {
@@ -174,58 +83,34 @@ function renderOperationCard(operation) {
     
     card.innerHTML = `
         <div class="operation-card-header">
-            <div class="operation-card-title">${operation.dock ? 'Doca ' + operation.dock : 'Operação'}</div>
+            <div class="operation-card-title">Doca ${operation.dock}</div>
             <div class="operation-status ${operation.status}">${getStatusLabel(operation.status)}</div>
         </div>
         
-        <div class="operation-card-time" data-id="${operation.id}-time">${formatTime(elapsedTime)}</div>
+        <div class="operation-card-time">${formatTime(elapsedTime)}</div>
         
         <div class="operation-card-details">
-            <div class="operation-card-detail">
-                <span class="operation-card-detail-label">DT:</span>
-                <span>${operation.dtNumber || 'N/A'}</span>
-            </div>
-            <div class="operation-card-detail">
-                <span class="operation-card-detail-label">Veículo:</span>
-                <span>${operation.vehicleType || 'N/A'}</span>
-            </div>
-            <div class="operation-card-detail">
-                <span class="operation-card-detail-label">Operador:</span>
-                <span>${operation.operatorName || 'N/A'}</span>
-            </div>
-            ${operation.status === 'binding' ? `
-            <div class="operation-card-detail">
-                <span class="operation-card-detail-label">Amarradores:</span>
-                <span>${operation.binders ? Object.values(operation.binders).join(', ') : 'N/A'}</span>
-            </div>
-            ` : ''}
+            <div>DT: ${operation.dtNumber}</div>
+            <div>Veículo: ${operation.vehicleType}</div>
+            <div>Operador: ${operation.operatorName}</div>
+            ${operation.binders ? `<div>Amarradores: ${Object.values(operation.binders).join(', ')}</div>` : ''}
         </div>
         
         <div class="operation-card-actions">
-            ${operation.status === 'loading' ? `
-            <button class="btn small-btn primary-btn finish-loading-btn" data-id="${operation.id}">
-                <i class="fas fa-stop"></i> Finalizar Carregamento
-            </button>
-            ` : ''}
+            ${operation.status === 'loading' ? 
+                `<button class="btn finish-loading-btn" data-id="${operation.id}">Finalizar Carregamento</button>` : ''}
             
             ${operation.status === 'awaiting_binding' ? `
-            <button class="btn small-btn primary-btn bind-operators-btn" data-id="${operation.id}">
-                <i class="fas fa-link"></i> Vincular Amarradores
-            </button>
-            <button class="btn small-btn primary-btn start-binding-btn" data-id="${operation.id}">
-                <i class="fas fa-play"></i> Iniciar Enlonamento
-            </button>
+                <button class="btn bind-operators-btn" data-id="${operation.id}">Vincular Amarradores</button>
+                <button class="btn start-binding-btn" data-id="${operation.id}">Iniciar Enlonamento</button>
             ` : ''}
             
-            ${operation.status === 'binding' ? `
-            <button class="btn small-btn primary-btn finish-binding-btn" data-id="${operation.id}">
-                <i class="fas fa-check"></i> Finalizar Enlonamento
-            </button>
-            ` : ''}
+            ${operation.status === 'binding' ? 
+                `<button class="btn finish-binding-btn" data-id="${operation.id}">Finalizar Enlonamento</button>` : ''}
         </div>
     `;
 
-    operationsGrid.appendChild(card);
+    elements.operationsGrid.appendChild(card);
 
     // Adicionar event listeners para os botões
     if (operation.status === 'loading') {
@@ -242,656 +127,359 @@ function renderOperationCard(operation) {
     }
 }
 
-function showBindOperatorsModal(operationId) {
-    resetFinishLoadingForm();
-    finishLoadingModal.style.display = 'flex';
-    
-    // Configurar o modal para vincular amarradores
-    document.querySelector('#finishLoadingModal h2').textContent = 'Vincular Amarradores';
-    document.getElementById('confirmFinishBtn').textContent = 'Confirmar Amarradores';
-    document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
-    document.getElementById('confirmFinishBtn').onclick = confirmBindOperators;
-    
-    // Mostrar apenas o scanner e lista de amarradores
-    document.getElementById('finishQrScannerContainer').style.display = 'block';
-    document.getElementById('finishQrScanner').style.display = 'block';
-    document.getElementById('bindersList').style.display = 'block';
-    
-    startFinishScanner();
-}
-
-function confirmBindOperators() {
-    const operationId = this.dataset.operationId;
-    const bindersList = document.getElementById('bindersList');
-    
-    // Criar objeto de amarradores
-    const binders = {};
-    Array.from(bindersList.children).forEach(item => {
-        const employeeId = item.dataset.id;
-        binders[employeeId] = item.textContent.trim().split(' (')[0]; // Pega apenas o nome
+function setupEventListeners() {
+    // Botões principais
+    elements.startLoadingBtn.addEventListener('click', () => {
+        resetStartLoadingForm();
+        elements.startLoadingModal.style.display = 'flex';
     });
-
-    if (Object.keys(binders).length === 0) {
-        alert('Adicione pelo menos um amarrador!');
-        return;
-    }
-
-    const updates = {
-        binders: binders
-    };
-
-    db.ref(`operations/${operationId}`).update(updates)
-        .then(() => {
-            finishLoadingModal.style.display = 'none';
-            stopAllScanners();
-            alert('Amarradores vinculados com sucesso!');
-        })
-        .catch(error => {
-            console.error('Erro ao vincular amarradores:', error);
-            alert('Erro ao vincular amarradores');
+    
+    // Modal de Início
+    elements.startScannerBtn.addEventListener('click', startScanner);
+    elements.cancelLoadingBtn.addEventListener('click', () => {
+        elements.startLoadingModal.style.display = 'none';
+        stopScanner();
+    });
+    elements.confirmLoadingBtn.addEventListener('click', confirmStartLoading);
+    
+    // Modal de Finalização
+    elements.startFinishScannerBtn.addEventListener('click', startFinishScanner);
+    elements.cancelFinishBtn.addEventListener('click', () => {
+        elements.finishLoadingModal.style.display = 'none';
+        stopFinishScanner();
+    });
+    
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        firebase.auth().signOut().then(() => {
+            window.location.href = 'index.html';
         });
-}
-
-function showFinishLoadingModal(operationId) {
-    resetFinishLoadingForm();
-    finishLoadingModal.style.display = 'flex';
+    });
     
-    // Configurar o modal de finalização
-    document.querySelector('#finishLoadingModal h2').textContent = 'Finalizar Carregamento';
-    document.getElementById('confirmFinishBtn').textContent = 'Confirmar Finalização';
-    document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
-    document.getElementById('confirmFinishBtn').onclick = confirmFinishOperationLoading;
-    
-    // Mostrar apenas o scanner
-    document.getElementById('finishQrScannerContainer').style.display = 'block';
-    document.getElementById('finishQrScanner').style.display = 'block';
-    document.getElementById('bindersList').style.display = 'none';
-    
-    startFinishScanner();
-}
-
-function startOperationBinding(operationId) {
-    const operation = currentOperations.find(op => op.id === operationId);
-    
-    if (!operation || !operation.binders || Object.keys(operation.binders).length === 0) {
-        alert('Por favor, vincule pelo menos um amarrador antes de iniciar o enlonamento!');
-        return;
-    }
-
-    const updates = {
-        status: 'binding',
-        bindingStartTime: firebase.database.ServerValue.TIMESTAMP
-    };
-
-    db.ref(`operations/${operationId}`).update(updates)
-        .then(() => {
-            alert('Enlonamento iniciado com sucesso!');
-        })
-        .catch(error => {
-            console.error('Erro ao iniciar enlonamento:', error);
-            alert('Erro ao iniciar enlonamento');
+    // Fechar modais
+    document.querySelectorAll('.close-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+            elements.startLoadingModal.style.display = 'none';
+            elements.finishLoadingModal.style.display = 'none';
+            stopScanner();
+            stopFinishScanner();
         });
+    });
 }
 
-function showFinishBindingModal(operationId) {
-    resetFinishLoadingForm();
-    finishLoadingModal.style.display = 'flex';
-    
-    // Configurar o modal para finalização de enlonamento
-    document.querySelector('#finishLoadingModal h2').textContent = 'Finalizar Enlonamento';
-    document.getElementById('confirmFinishBtn').textContent = 'Confirmar Finalização';
-    document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
-    document.getElementById('confirmFinishBtn').onclick = confirmFinishOperationBinding;
-    
-    // Mostrar apenas o scanner
-    document.getElementById('finishQrScannerContainer').style.display = 'block';
-    document.getElementById('finishQrScanner').style.display = 'block';
-    document.getElementById('bindersList').style.display = 'none';
-    
-    startFinishScanner();
-}
-
-function confirmFinishOperationBinding() {
-    const operationId = this.dataset.operationId;
-    const operatorName = getElementSafe('operatorName', 'handleOperatorScan').textContent;
-
-    if (!operatorName) {
-        alert('Por favor, escaneie o QR Code do operador para confirmar!');
-        return;
-    }
-
-    const updates = {
-        status: 'completed',
-        bindingEndTime: firebase.database.ServerValue.TIMESTAMP,
-        confirmedBy: operatorName,
-        confirmedAt: firebase.database.ServerValue.TIMESTAMP
-    };
-
-    db.ref(`operations/${operationId}`).update(updates)
-        .then(() => {
-            finishLoadingModal.style.display = 'none';
-            stopAllScanners();
-            saveOperationHistory(operationId);
-            alert('Enlonamento finalizado com sucesso!');
-        })
-        .catch(error => {
-            console.error('Erro ao finalizar enlonamento:', error);
-            alert('Erro ao finalizar enlonamento');
-        });
-}
-
-function confirmFinishOperationLoading() {
-    const operationId = this.dataset.operationId;
-    const operatorName = getElementSafe('operatorName', 'handleOperatorScan').textContent;
-
-    if (!operatorName) {
-        alert('Por favor, escaneie o QR Code do operador para confirmar!');
-        return;
-    }
-
-    const updates = {
-        status: 'awaiting_binding',
-        loadingEndTime: firebase.database.ServerValue.TIMESTAMP,
-        confirmedBy: operatorName,
-        confirmedAt: firebase.database.ServerValue.TIMESTAMP
-    };
-
-    db.ref(`operations/${operationId}`).update(updates)
-        .then(() => {
-            finishLoadingModal.style.display = 'none';
-            stopAllScanners();
-            alert('Carregamento finalizado com sucesso! Aguardando enlonamento.');
-        })
-        .catch(error => {
-            console.error('Erro ao finalizar carregamento:', error);
-            alert('Erro ao finalizar carregamento');
-        });
-}
-
-function getStatusLabel(status) {
-    const labels = {
-        'loading': 'Carregando',
-        'awaiting_binding': 'Aguardando Enlonamento',
-        'binding': 'Enlonamento',
-        'completed': 'Concluído',
-        'paused': 'Pausado'
-    };
-    
-    return labels[status] || status;
-}
-
+// Funções do Scanner
 function startScanner() {
-    // Parar qualquer scanner existente
-    stopAllScanners();
+    stopScanner();
     
-    const video = document.getElementById('qrScanner');
-    video.style.display = 'block';
-    
+    elements.qrScanner.style.display = 'block';
     qrScanner = new Instascan.Scanner({
-        video: video,
-        mirror: false,
-        scanPeriod: 1, // Scanner mais rápido
-        backgroundScan: false
+        video: elements.qrScanner,
+        mirror: false
     });
     
-    // Limpar listeners anteriores
-    qrScanner.removeAllListeners('scan');
-    
-    qrScanner.addListener('scan', function(content) {
+    qrScanner.addListener('scan', content => {
         handleQrScan(content, 'operator');
     });
     
     Instascan.Camera.getCameras()
-        .then(function(cameraList) {
+        .then(cameraList => {
             cameras = cameraList;
             if (cameras.length > 0) {
                 return qrScanner.start(cameras[currentCameraIndex]);
-            } else {
-                throw new Error('Nenhuma câmera encontrada!');
             }
+            throw new Error('Nenhuma câmera encontrada');
         })
-        .then(() => {
-            console.log('Scanner iniciado com sucesso');
-        })
-        .catch(function(e) {
-            console.error('Erro ao iniciar scanner:', e);
-            alert('Erro ao acessar a câmera: ' + e.message);
-            document.getElementById('qrScanner').style.display = 'none';
+        .catch(error => {
+            console.error('Erro ao iniciar scanner:', error);
+            showFeedback('Erro ao acessar câmera: ' + error.message, 'error', 'scanFeedback');
         });
 }
 
 function startFinishScanner() {
-    const video = document.getElementById('finishQrScanner');
-    video.style.display = 'block';
+    stopFinishScanner();
     
-    // Parar o scanner existente se houver
-    if (finishQrScanner) {
-        finishQrScanner.stop();
-    }
-    
+    elements.finishQrScanner.style.display = 'block';
     finishQrScanner = new Instascan.Scanner({
-        video: video,
-        mirror: false,
-        scanPeriod: 1, // Reduzir o tempo de verificação
-        backgroundScan: false
+        video: elements.finishQrScanner,
+        mirror: false
     });
     
-    finishQrScanner.addListener('scan', function(content) {
-        handleQrScan(content, 'binder');
+    finishQrScanner.addListener('scan', content => {
+        handleQrScan(content, 'finish');
     });
     
-    // Limpar listeners anteriores para evitar duplicação
-    finishQrScanner.removeAllListeners('scan');
-    finishQrScanner.addListener('scan', function(content) {
-        handleQrScan(content, 'binder');
-    });
-    
-    Instascan.Camera.getCameras().then(function(cameraList) {
-        if (cameraList.length > 0) {
-            currentFinishCameraIndex = currentFinishCameraIndex % cameraList.length;
-            finishQrScanner.start(cameras[currentFinishCameraIndex])
-                .then(() => {
-                    console.log('Scanner de finalização iniciado com sucesso');
-                })
-                .catch(err => {
-                    console.error('Erro ao iniciar scanner de finalização:', err);
-                    alert('Erro ao iniciar câmera. Por favor, recarregue a página e tente novamente.');
-                });
-        } else {
-            alert('Nenhuma câmera encontrada!');
-        }
-    }).catch(function(e) {
-        console.error('Erro ao acessar câmeras:', e);
-        alert('Erro ao acessar a câmera. Verifique as permissões.');
-    });
-}
-
-function stopAllScanners() {
-    try {
-        // Parar e limpar o scanner de início
-        if (qrScanner) {
-            qrScanner.stop().catch(e => console.error('Erro ao parar qrScanner:', e));
-            document.getElementById('qrScanner').style.display = 'none';
-            qrScanner = null;
-        }
-        
-        // Parar e limpar o scanner de finalização
-        if (finishQrScanner) {
-            finishQrScanner.stop().catch(e => console.error('Erro ao parar finishQrScanner:', e));
-            document.getElementById('finishQrScanner').style.display = 'none';
-            finishQrScanner = null;
-        }
-        
-        // Limpar o intervalo de atualização de tempo
-        if (timeUpdateInterval) {
-            clearInterval(timeUpdateInterval);
-            timeUpdateInterval = null;
-        }
-    } catch (e) {
-        console.error('Erro ao parar scanners:', e);
-    }
-}
-
-function handleQrScan(result, type) {
-    // 1. Verificação robusta do input
-    if (!result || typeof result !== 'string') {
-        return showFeedback('QR Code inválido: conteúdo vazio ou não-texto', 'error', type);
-    }
-
-    // 2. Validação do formato
-    const qrCodeRegex = /^GZL-EO-\d{5}$/;
-    if (!qrCodeRegex.test(result)) {
-        return showFeedback(`Formato inválido! Use: GZL-EO-XXXXX`, 'error', type);
-    }
-
-    // 3. Feedback visual
-    showFeedback('Validando QR Code...', 'processing', type);
-
-    // 4. Consulta ao Firebase com tratamento de erros
-    db.ref('funcionarios').orderByChild('codigo').equalTo(result).once('value')
-        .then(snapshot => {
-            if (!snapshot.exists()) {
-                throw new Error('Funcionário não encontrado no banco de dados');
+    Instascan.Camera.getCameras()
+        .then(cameraList => {
+            if (cameraList.length > 0) {
+                return finishQrScanner.start(cameraList[currentCameraIndex]);
             }
-
-            // 5. Processamento dos dados
-            let employeeData = null;
-            snapshot.forEach(child => {
-                employeeData = child.val();
-                return true; // Encerra após o primeiro resultado
-            });
-
-            if (!employeeData) {
-                throw new Error('Dados do funcionário inválidos');
-            }
-
-            // 6. Ação baseada no tipo (operator/binder)
-            if (type === 'operator') {
-                handleOperatorScan(employeeData);
-            } else {
-                handleBinderScan(employeeData, child.key);
-            }
+            throw new Error('Nenhuma câmera encontrada');
         })
         .catch(error => {
-            console.error('Erro na consulta:', error);
-            showFeedback(`Erro: ${error.message}`, 'error', type);
+            console.error('Erro ao iniciar scanner:', error);
+            showFeedback('Erro ao acessar câmera: ' + error.message, 'error', 'finishScanFeedback');
         });
 }
 
-function handleOperatorScan(employeeData) {
-    const operatorNameElement = document.getElementById('operatorName');
-    const operatorInfoElement = document.getElementById('operatorInfo');
-    const confirmBtn = document.getElementById('confirmLoadingBtn');
+function stopScanner() {
+    if (qrScanner) {
+        qrScanner.stop();
+        qrScanner = null;
+    }
+    elements.qrScanner.style.display = 'none';
+}
 
-    if (!operatorNameElement || !operatorInfoElement || !confirmBtn) {
-        console.error('Elementos não encontrados:', {
-            operatorName: !!operatorNameElement,
-            operatorInfo: !!operatorInfoElement,
-            confirmBtn: !!confirmBtn
-        });
+function stopFinishScanner() {
+    if (finishQrScanner) {
+        finishQrScanner.stop();
+        finishQrScanner = null;
+    }
+    elements.finishQrScanner.style.display = 'none';
+}
+
+function handleQrScan(content, type) {
+    const qrCodeRegex = /^GZL-EO-\d{5}$/;
+    if (!qrCodeRegex.test(content)) {
+        showFeedback('QR Code inválido! Formato deve ser GZL-EO-XXXXX', 'error', type === 'operator' ? 'scanFeedback' : 'finishScanFeedback');
         return;
     }
 
-    operatorNameElement.textContent = employeeData.nome;
-    operatorInfoElement.innerHTML = `Operador: <strong>${employeeData.nome}</strong>`;
-    operatorInfoElement.style.display = 'block';
-    confirmBtn.disabled = false;
+    showFeedback('Validando QR Code...', 'info', type === 'operator' ? 'scanFeedback' : 'finishScanFeedback');
 
-    // Debug: Verifique no console se os valores estão sendo atribuídos
-    console.log('Operador definido:', {
-        name: operatorNameElement.textContent,
-        buttonDisabled: confirmBtn.disabled
-    });
+    db.ref('funcionarios').orderByChild('codigo').equalTo(content).once('value')
+        .then(snapshot => {
+            if (!snapshot.exists()) {
+                throw new Error('Funcionário não encontrado');
+            }
+
+            let employeeData = null;
+            snapshot.forEach(child => {
+                employeeData = child.val();
+                return true;
+            });
+
+            if (type === 'operator') {
+                elements.operatorName.textContent = employeeData.nome;
+                elements.operatorInfo.style.display = 'block';
+                elements.confirmLoadingBtn.disabled = false;
+                showFeedback('Operador validado com sucesso!', 'success', 'scanFeedback');
+                stopScanner();
+            } else {
+                if (elements.finishModalTitle.textContent.includes('Vincular')) {
+                    addBinderToList(employeeData, snapshot.key);
+                } else {
+                    elements.operatorFinishName.textContent = employeeData.nome;
+                    elements.operatorFinishInfo.style.display = 'block';
+                    elements.confirmFinishBtn.disabled = false;
+                    showFeedback('Operador validado com sucesso!', 'success', 'finishScanFeedback');
+                    stopFinishScanner();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao validar QR Code:', error);
+            showFeedback('Erro: ' + error.message, 'error', type === 'operator' ? 'scanFeedback' : 'finishScanFeedback');
+        });
 }
 
-function handleBinderScan(employeeData, employeeId) {
-    const bindersList = document.getElementById('bindersList');
-    if (!bindersList) {
-        return showFeedback('Elemento bindersList não encontrado', 'error', 'binder');
+function addBinderToList(employeeData, employeeId) {
+    if (Array.from(elements.bindersList.children).some(item => item.dataset.id === employeeId)) {
+        showFeedback(`${employeeData.nome} já está na lista`, 'info', 'finishScanFeedback');
+        return;
     }
 
-    // Verifica se já foi adicionado
-    if (Array.from(bindersList.children).some(item => item.dataset.id === employeeId)) {
-        return showFeedback(`${employeeData.nome} já está na lista`, 'info', 'binder');
-    }
-
-    // Adiciona novo amarrador
     const binderItem = document.createElement('div');
     binderItem.className = 'binder-item';
     binderItem.dataset.id = employeeId;
     binderItem.innerHTML = `
         <span>${employeeData.nome} (${employeeData.cargo})</span>
-        <button class="btn small-btn danger-btn remove-binder-btn">
-            <i class="fas fa-times"></i>
-        </button>
+        <button class="btn remove-binder-btn"><i class="fas fa-times"></i></button>
     `;
-
-    // Adiciona evento de remoção
-    binderItem.querySelector('.remove-binder-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
+    
+    binderItem.querySelector('.remove-binder-btn').addEventListener('click', () => {
         binderItem.remove();
         checkBindersList();
     });
-
-    bindersList.appendChild(binderItem);
+    
+    elements.bindersList.appendChild(binderItem);
     checkBindersList();
-    showFeedback(`${employeeData.nome} adicionado como amarrador`, 'success', 'binder');
-}
-
-function showFeedback(message, type = 'info', context = 'operator') {
-    const elementId = context === 'operator' ? 'scanFeedback' : 'bindersFeedback';
-    const feedbackElement = document.getElementById(elementId);
-    
-    if (!feedbackElement) {
-        console.error(`Elemento de feedback não encontrado: ${elementId}`);
-        return;
-    }
-
-    // Configuração de estilos
-    const styles = {
-        error: { background: '#ffebee', color: '#c62828', border: '1px solid #ef9a9a' },
-        success: { background: '#e8f5e9', color: '#2e7d32', border: '1px solid #a5d6a7' },
-        processing: { background: '#e3f2fd', color: '#1565c0', border: '1px solid #90caf9' },
-        info: { background: '#fff8e1', color: '#f57f17', border: '1px solid #ffe082' }
-    };
-
-    // Aplica estilos
-    Object.assign(feedbackElement.style, {
-        display: 'block',
-        padding: '10px',
-        margin: '10px 0',
-        borderRadius: '4px',
-        ...styles[type] || styles.info
-    });
-
-    feedbackElement.textContent = message;
-
-    // Auto-esconde após 5 segundos (exceto sucesso)
-    if (type !== 'success') {
-        setTimeout(() => {
-            feedbackElement.style.display = 'none';
-        }, 5000);
-    }
-}
-
-function updateOperatorInfo(employeeData) {
-    const operatorNameElement = getElementSafe('operatorName', 'handleOperatorScan');
-    const operatorInfoElement = document.getElementById('operatorInfo');
-    
-    if (operatorNameElement && operatorInfoElement) {
-        operatorNameElement.textContent = employeeData.nome;
-        operatorInfoElement.textContent = `Operador: ${employeeData.nome}`;
-        operatorInfoElement.style.display = 'block';
-        
-        // Habilita o botão de confirmação
-        const confirmBtn = document.getElementById('confirmLoadingBtn');
-        if (confirmBtn) confirmBtn.disabled = false;
-        
-        showScanFeedback(`Operador ${employeeData.nome} identificado!`, 'success');
-        
-        // Fechar a câmera
-        stopScanner();
-    }
-}
-
-function stopScanner() {
-    const qrScannerElement = document.getElementById('qrScanner');
-    if (qrScannerElement) qrScannerElement.style.display = 'none';
-    
-    if (qrScanner) {
-        qrScanner.stop().catch(e => console.error('Erro ao parar scanner:', e));
-    }
-}
-
-// Função auxiliar para mostrar feedback
-function showScanFeedback(message, type = 'info') {
-    const feedbackElement = document.getElementById('scanFeedback');
-    if (!feedbackElement) return;
-
-    // Configura cores baseadas no tipo
-    const styles = {
-        error: {
-            color: '#721c24',
-            backgroundColor: '#f8d7da',
-            borderColor: '#f5c6cb'
-        },
-        success: {
-            color: '#155724',
-            backgroundColor: '#d4edda',
-            borderColor: '#c3e6cb'
-        },
-        info: {
-            color: '#0c5460',
-            backgroundColor: '#d1ecf1',
-            borderColor: '#bee5eb'
-        },
-        processing: {
-            color: '#004085',
-            backgroundColor: '#cce5ff',
-            borderColor: '#b8daff'
-        }
-    };
-
-    feedbackElement.textContent = message;
-    feedbackElement.style.display = 'block';
-    
-    // Aplica estilos
-    Object.assign(feedbackElement.style, styles[type] || styles.info);
-
-    // Esconde após 3 segundos (exceto para sucesso)
-    if (type !== 'success') {
-        setTimeout(() => {
-            feedbackElement.style.display = 'none';
-        }, 3000);
-    }
-}
-
-function addBinderToList(employeeData, employeeId) {
-    const bindersList = document.getElementById('bindersList');
-    if (!bindersList) return;
-
-    // Verifica se o amarrador já foi adicionado
-    const existing = Array.from(bindersList.children).some(item => 
-        item.dataset.id === employeeId
-    );
-
-    if (!existing) {
-        const binderItem = document.createElement('div');
-        binderItem.className = 'binder-item';
-        binderItem.dataset.id = employeeId;
-        binderItem.innerHTML = `
-            <span>${employeeData.nome} (${employeeData.cargo})</span>
-            <button class="btn small-btn danger-btn remove-binder-btn">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-        
-        bindersList.appendChild(binderItem);
-        
-        // Adiciona evento para remover
-        binderItem.querySelector('.remove-binder-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            binderItem.remove();
-            checkBindersList();
-        });
-        
-        checkBindersList();
-        showScanFeedback(`${employeeData.nome} adicionado como amarrador!`, 'success');
-    } else {
-        showScanFeedback(`${employeeData.nome} já está na lista!`, 'info');
-    }
+    showFeedback(`${employeeData.nome} adicionado como amarrador`, 'success', 'finishScanFeedback');
 }
 
 function checkBindersList() {
-    const bindersList = document.getElementById('bindersList');
-    const confirmBtn = document.getElementById('confirmFinishBtn');
-    
-    if (!bindersList || !confirmBtn) return;
-    
-    confirmBtn.disabled = bindersList.children.length === 0;
+    elements.confirmFinishBtn.disabled = elements.bindersList.children.length === 0;
 }
 
+// Funções de Operação
 function confirmStartLoading() {
-    // 1. Obter todos os valores com verificações de segurança
-    const getValue = (id, isTextContent = false) => {
-        const element = document.getElementById(id);
-        if (!element) {
-            console.error(`Elemento não encontrado: ${id}`);
-            return null;
-        }
-        return isTextContent ? element.textContent.trim() : element.value.trim();
-    };
+    const dtNumber = elements.dtNumber.value.trim();
+    const vehicleType = elements.vehicleType.value;
+    const dockNumber = elements.dockNumber.value;
+    const operatorName = elements.operatorName.textContent;
 
-    // 2. Obter todos os valores necessários
-    const values = {
-        dtNumber: getValue('dtNumber'),
-        vehicleType: getValue('vehicleType'),
-        dockNumber: getValue('dockNumber'),
-        operatorName: getValue('operatorName', true) // Text content
-    };
-
-    // 3. Verificar se algum valor é nulo (elemento não encontrado)
-    if (Object.values(values).some(v => v === null)) {
-        return showFeedback('Erro interno no formulário', 'error', 'operator');
+    if (!dtNumber || !vehicleType || !dockNumber || !operatorName) {
+        showFeedback('Preencha todos os campos obrigatórios', 'error', 'scanFeedback');
+        return;
     }
 
-    // 4. Validação dos campos
-    const emptyFields = Object.entries(values)
-        .filter(([key, value]) => !value)
-        .map(([key]) => {
-            switch(key) {
-                case 'dtNumber': return 'Número da DT';
-                case 'vehicleType': return 'Tipo de Veículo';
-                case 'dockNumber': return 'Doca';
-                case 'operatorName': return 'Operador (QR Code)';
-                default: return key;
-            }
-        });
-
-    if (emptyFields.length > 0) {
-        return showFeedback(`Preencha: ${emptyFields.join(', ')}`, 'error', 'operator');
-    }
-
-    // 5. Verificar se a doca está disponível
+    // Verificar se a doca já está em uso
     const isDockInUse = currentOperations.some(op => 
-        op.dock === values.dockNumber && 
-        ['loading', 'binding', 'paused'].includes(op.status)
+        op.dock === dockNumber && ['loading', 'binding', 'paused'].includes(op.status)
     );
 
     if (isDockInUse) {
-        return showFeedback(`Doca ${values.dockNumber} já está em uso!`, 'error', 'operator');
+        showFeedback(`Doca ${dockNumber} já está em uso`, 'error', 'scanFeedback');
+        return;
     }
 
-    // 6. Desabilitar botão durante o processamento
-    const confirmBtn = document.getElementById('confirmLoadingBtn');
-    if (confirmBtn) confirmBtn.disabled = true;
+    elements.confirmLoadingBtn.disabled = true;
 
-    // 7. Criar objeto da operação
     const newOperation = {
-        dtNumber: values.dtNumber,
-        vehicleType: values.vehicleType,
-        dock: values.dockNumber,
-        operatorName: values.operatorName,
+        dtNumber,
+        vehicleType,
+        dock: dockNumber,
+        operatorName,
         status: 'loading',
         startTime: firebase.database.ServerValue.TIMESTAMP,
-        createdBy: currentUser.uid,
-        createdAt: firebase.database.ServerValue.TIMESTAMP
+        createdBy: currentUser.uid
     };
 
-    // 8. Adicionar ao Firebase
     db.ref('operations').push(newOperation)
         .then(() => {
-            showFeedback('Carregamento iniciado com sucesso!', 'success', 'operator');
-            startLoadingModal.style.display = 'none';
-            resetStartLoadingForm();
+            showFeedback('Carregamento iniciado com sucesso!', 'success', 'scanFeedback');
+            setTimeout(() => {
+                elements.startLoadingModal.style.display = 'none';
+                resetStartLoadingForm();
+            }, 1500);
         })
         .catch(error => {
-            console.error('Erro ao iniciar:', error);
-            showFeedback(`Erro: ${error.message}`, 'error', 'operator');
+            console.error('Erro ao iniciar carregamento:', error);
+            showFeedback('Erro ao iniciar carregamento: ' + error.message, 'error', 'scanFeedback');
         })
         .finally(() => {
-            if (confirmBtn) confirmBtn.disabled = false;
+            elements.confirmLoadingBtn.disabled = false;
+        });
+}
+
+function showFinishLoadingModal(operationId) {
+    resetFinishLoadingForm();
+    elements.finishModalTitle.textContent = 'Finalizar Carregamento';
+    elements.confirmFinishBtn.textContent = 'Finalizar Carregamento';
+    elements.confirmFinishBtn.onclick = () => confirmFinishOperation(operationId, 'loading');
+    elements.finishLoadingModal.style.display = 'flex';
+}
+
+function showBindOperatorsModal(operationId) {
+    resetFinishLoadingForm();
+    elements.finishModalTitle.textContent = 'Vincular Amarradores';
+    elements.confirmFinishBtn.textContent = 'Confirmar Amarradores';
+    elements.bindersList.style.display = 'block';
+    elements.confirmFinishBtn.onclick = () => confirmBinders(operationId);
+    elements.finishLoadingModal.style.display = 'flex';
+}
+
+function startOperationBinding(operationId) {
+    const operation = currentOperations.find(op => op.id === operationId);
+    if (!operation.binders || Object.keys(operation.binders).length === 0) {
+        alert('Adicione pelo menos um amarrador antes de iniciar');
+        return;
+    }
+
+    db.ref(`operations/${operationId}`).update({
+        status: 'binding',
+        bindingStartTime: firebase.database.ServerValue.TIMESTAMP
+    })
+    .then(() => {
+        alert('Enlonamento iniciado com sucesso');
+    })
+    .catch(error => {
+        console.error('Erro ao iniciar enlonamento:', error);
+        alert('Erro ao iniciar enlonamento');
+    });
+}
+
+function showFinishBindingModal(operationId) {
+    resetFinishLoadingForm();
+    elements.finishModalTitle.textContent = 'Finalizar Enlonamento';
+    elements.confirmFinishBtn.textContent = 'Finalizar Enlonamento';
+    elements.confirmFinishBtn.onclick = () => confirmFinishOperation(operationId, 'binding');
+    elements.finishLoadingModal.style.display = 'flex';
+}
+
+function confirmFinishOperation(operationId, operationType) {
+    const operatorName = elements.operatorFinishName.textContent;
+    if (!operatorName) {
+        showFeedback('Escaneie o QR Code do operador', 'error', 'finishScanFeedback');
+        return;
+    }
+
+    const updates = {
+        confirmedBy: operatorName,
+        confirmedAt: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    if (operationType === 'loading') {
+        updates.status = 'awaiting_binding';
+        updates.loadingEndTime = firebase.database.ServerValue.TIMESTAMP;
+    } else {
+        updates.status = 'completed';
+        updates.bindingEndTime = firebase.database.ServerValue.TIMESTAMP;
+    }
+
+    elements.confirmFinishBtn.disabled = true;
+
+    db.ref(`operations/${operationId}`).update(updates)
+        .then(() => {
+            if (operationType === 'binding') {
+                saveOperationHistory(operationId);
+            }
+            showFeedback('Operação finalizada com sucesso!', 'success', 'finishScanFeedback');
+            setTimeout(() => {
+                elements.finishLoadingModal.style.display = 'none';
+            }, 1500);
+        })
+        .catch(error => {
+            console.error('Erro ao finalizar operação:', error);
+            showFeedback('Erro ao finalizar: ' + error.message, 'error', 'finishScanFeedback');
+        })
+        .finally(() => {
+            elements.confirmFinishBtn.disabled = false;
+        });
+}
+
+function confirmBinders(operationId) {
+    const binders = {};
+    Array.from(elements.bindersList.children).forEach(item => {
+        const employeeId = item.dataset.id;
+        binders[employeeId] = item.textContent.trim().split(' (')[0];
+    });
+
+    if (Object.keys(binders).length === 0) {
+        showFeedback('Adicione pelo menos um amarrador', 'error', 'finishScanFeedback');
+        return;
+    }
+
+    elements.confirmFinishBtn.disabled = true;
+
+    db.ref(`operations/${operationId}`).update({ binders })
+        .then(() => {
+            showFeedback('Amarradores vinculados com sucesso!', 'success', 'finishScanFeedback');
+            setTimeout(() => {
+                elements.finishLoadingModal.style.display = 'none';
+            }, 1500);
+        })
+        .catch(error => {
+            console.error('Erro ao vincular amarradores:', error);
+            showFeedback('Erro ao vincular: ' + error.message, 'error', 'finishScanFeedback');
+        })
+        .finally(() => {
+            elements.confirmFinishBtn.disabled = false;
         });
 }
 
 function saveOperationHistory(operationId) {
     const operation = currentOperations.find(op => op.id === operationId);
-    
     if (!operation) return;
-
-    const loadingTime = calculateElapsedTime({
-        startTime: operation.startTime,
-        endTime: operation.loadingEndTime,
-        pauses: operation.pauses
-    });
-
-    const bindingTime = calculateElapsedTime({
-        startTime: operation.bindingStartTime,
-        endTime: operation.bindingEndTime,
-        pauses: {}
-    });
-
-    const totalTime = loadingTime + bindingTime;
 
     const historyData = {
         operationId,
@@ -900,88 +488,76 @@ function saveOperationHistory(operationId) {
         dock: operation.dock,
         operator: operation.operatorName,
         binders: operation.binders,
-        loadingTime,
-        bindingTime,
-        totalTime,
-        completedAt: firebase.database.ServerValue.TIMESTAMP,
-        completedBy: currentUser.uid
+        startTime: operation.startTime,
+        loadingEndTime: operation.loadingEndTime,
+        bindingStartTime: operation.bindingStartTime,
+        bindingEndTime: operation.bindingEndTime,
+        completedAt: firebase.database.ServerValue.TIMESTAMP
     };
 
     db.ref('history').push(historyData)
         .then(() => {
-            // Remover a operação do banco de dados principal
             db.ref(`operations/${operationId}`).remove();
-        })
-        .catch(error => {
-            console.error('Erro ao salvar histórico:', error);
         });
 }
 
-function showPauseModal() {
-    const operationsToPause = document.getElementById('operationsToPause');
-    operationsToPause.innerHTML = '';
-    
-    currentOperations
-        .filter(op => op.status === 'loading' || op.status === 'binding')
-        .forEach(op => {
-            const opDiv = document.createElement('div');
-            opDiv.className = 'operation-to-pause';
-            opDiv.innerHTML = `
-                <input type="checkbox" id="pause-${op.id}" value="${op.id}">
-                <label for="pause-${op.id}">${op.dock ? 'Doca ' + op.dock : 'Operação'} - ${getStatusLabel(op.status)}</label>
-            `;
-            operationsToPause.appendChild(opDiv);
-        });
-    
-    pauseModal.style.display = 'flex';
+// Funções auxiliares
+function resetStartLoadingForm() {
+    elements.dtNumber.value = '';
+    elements.vehicleType.value = '';
+    elements.dockNumber.value = '';
+    elements.operatorName.textContent = '';
+    elements.operatorInfo.style.display = 'none';
+    elements.confirmLoadingBtn.disabled = true;
+    elements.scanFeedback.style.display = 'none';
 }
 
-function confirmPause() {
-    const selectedOperations = Array.from(document.querySelectorAll('#operationsToPause input:checked'))
-        .map(input => input.value);
+function resetFinishLoadingForm() {
+    elements.operatorFinishName.textContent = '';
+    elements.operatorFinishInfo.style.display = 'none';
+    elements.bindersList.innerHTML = '';
+    elements.bindersList.style.display = 'none';
+    elements.confirmFinishBtn.disabled = true;
+    elements.finishScanFeedback.style.display = 'none';
+}
+
+function showFeedback(message, type, elementId) {
+    const feedbackElement = document.getElementById(elementId);
+    if (!feedbackElement) return;
+
+    feedbackElement.textContent = message;
+    feedbackElement.style.display = 'block';
     
-    if (selectedOperations.length === 0) {
-        alert('Selecione pelo menos uma operação para pausar!');
-        return;
+    // Configurar cores baseadas no tipo
+    const colors = {
+        error: { bg: '#ffebee', text: '#c62828' },
+        success: { bg: '#e8f5e9', text: '#2e7d32' },
+        info: { bg: '#e3f2fd', text: '#1565c0' }
+    };
+    
+    feedbackElement.style.backgroundColor = colors[type]?.bg || '#f5f5f5';
+    feedbackElement.style.color = colors[type]?.text || '#333';
+    
+    // Esconder após alguns segundos
+    if (type !== 'success') {
+        setTimeout(() => {
+            feedbackElement.style.display = 'none';
+        }, 5000);
     }
-
-    const updates = {};
-    const now = firebase.database.ServerValue.TIMESTAMP;
-    
-    selectedOperations.forEach(opId => {
-        const operation = currentOperations.find(op => op.id === opId);
-        
-        if (operation) {
-            const pauses = operation.pauses || {};
-            const pauseId = generateId();
-            pauses[pauseId] = { start: now };
-            
-            updates[`operations/${opId}/status`] = 'paused';
-            updates[`operations/${opId}/pauses`] = pauses;
-        }
-    });
-    
-    db.ref().update(updates)
-        .then(() => {
-            pauseModal.style.display = 'none';
-        })
-        .catch(error => {
-            console.error('Erro ao pausar operações:', error);
-            alert('Erro ao pausar operações');
-        });
 }
 
 function calculateElapsedTime(operation) {
     if (!operation.startTime) return 0;
     
+    const now = Date.now();
     const start = operation.startTime;
-    const end = operation.endTime || Date.now();
+    const end = operation.endTime || now;
     
     let pausedTime = 0;
     if (operation.pauses) {
         Object.values(operation.pauses).forEach(p => {
-            const pauseStart = p.start;
-            const pauseEnd = p.end || Date.now();
+            const pauseStart = p.start || 0;
+            const pauseEnd = p.end || now;
             pausedTime += pauseEnd - pauseStart;
         });
     }
@@ -997,39 +573,13 @@ function formatTime(seconds) {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
-function generateId() {
-    return db.ref().push().key;
-}
-
-function resetStartLoadingForm() {
-    const elements = {
-        dtNumber: document.getElementById('dtNumber'),
-        vehicleType: document.getElementById('vehicleType'),
-        dockNumber: document.getElementById('dockNumber'),
-        operatorName: document.getElementById('operatorName'),
-        operatorInfo: document.getElementById('operatorInfo'),
-        confirmBtn: document.getElementById('confirmLoadingBtn'),
-        feedback: document.getElementById('scanFeedback')
+function getStatusLabel(status) {
+    const labels = {
+        'loading': 'Carregando',
+        'awaiting_binding': 'Aguardando Enlonamento',
+        'binding': 'Enlonamento',
+        'completed': 'Concluído',
+        'paused': 'Pausado'
     };
-
-    // Resetar valores
-    if (elements.dtNumber) elements.dtNumber.value = '';
-    if (elements.vehicleType) elements.vehicleType.value = 'Caminhão';
-    if (elements.dockNumber) elements.dockNumber.value = '1';
-    if (elements.operatorName) elements.operatorName.textContent = '';
-    if (elements.operatorInfo) elements.operatorInfo.style.display = 'none';
-    if (elements.confirmBtn) elements.confirmBtn.disabled = true;
-    if (elements.feedback) elements.feedback.style.display = 'none';
-}
-
-function resetFinishLoadingForm() {
-    getElementSafe('operatorName', 'handleOperatorScan').textContent = '';
-    document.getElementById('operatorInfo').style.display = 'none';
-    document.getElementById('confirmFinishBtn').disabled = true;
-    document.getElementById('bindersList').innerHTML = '';
-    document.getElementById('bindersFeedback').style.display = 'none';
-    document.querySelector('#finishLoadingModal h2').textContent = 'Finalizar Amarração';
-    document.getElementById('confirmFinishBtn').textContent = 'Finalizar Amarração';
-    document.getElementById('finishQrScannerContainer').style.display = 'none';
-    document.getElementById('bindersList').style.display = 'none';
+    return labels[status] || status;
 }

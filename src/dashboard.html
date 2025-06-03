@@ -8,79 +8,62 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="../css/dahboard.css">
     <style>
-        /* Estilos adicionais para os novos elementos */
-        .input-method-toggle {
+        /* Estilos básicos */
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        
+        .dashboard-container {
             display: flex;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            overflow: hidden;
-            border: 1px solid #ddd;
+            min-height: 100vh;
         }
         
-        .input-method-toggle button {
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+        }
+        
+        .main-content {
             flex: 1;
-            padding: 10px;
-            border: none;
-            background: #f5f5f5;
-            cursor: pointer;
-            transition: all 0.3s;
+            padding: 20px;
         }
         
-        .input-method-toggle button.active {
-            background: #4285f4;
-            color: white;
-        }
-        
-        .input-method-toggle button:first-child {
-            border-right: 1px solid #ddd;
-        }
-        
-        .manual-input-container {
+        .modal {
             display: none;
-            margin-top: 15px;
-        }
-        
-        .manual-input-container input {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
         }
         
-        .qr-scanner-container {
-            position: relative;
-            margin-bottom: 15px;
-        }
-        
-        .qr-scanner-container video {
+        .modal-content {
+            background-color: white;
+            padding: 20px;
             border-radius: 5px;
-            border: 1px solid #ddd;
-            background: #000;
+            width: 90%;
+            max-width: 500px;
         }
         
-        .switch-camera-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.5);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            z-index: 10;
-        }
+        /* Adicione seus outros estilos aqui */
     </style>
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- Sidebar/Navbar -->
+        <!-- Sidebar -->
         <nav class="sidebar">
             <div class="sidebar-header">
                 <img src="../img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo PA" class="sidebar-logo">
-                <h2>Sistema PA (3.11)</h2>
+                <h2>Sistema PA (4.0)</h2>
             </div>
             <ul class="sidebar-menu">
                 <li class="active"><a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
@@ -98,7 +81,6 @@
                 <h1>Painel de Controle</h1>
                 <div class="user-info">
                     <span id="currentUser">Usuário Logado</span>
-                    <img src="user-avatar.png" alt="Avatar" class="user-avatar">
                 </div>
             </header>
 
@@ -108,10 +90,7 @@
                     <i class="fas fa-play"></i> Iniciar Carregamento
                 </button>
                 <button class="btn secondary-btn" id="finishLoadingBtn" disabled>
-                    <i class="fas fa-stop"></i> Finalizar Amarração
-                </button>
-                <button class="btn warning-btn" id="pauseBtn" disabled>
-                    <i class="fas fa-pause"></i> Pausa
+                    <i class="fas fa-stop"></i> Finalizar Operação
                 </button>
             </div>
 
@@ -129,66 +108,40 @@
                     <span class="close-modal">&times;</span>
                     <h2>Iniciar Carregamento</h2>
 
-                    <!-- Adicione este elemento no modal de início de carregamento -->
-                    <div id="scanFeedback" style="display: none; padding: 10px; margin: 10px 0; border-radius: 4px;"></div>
+                    <div id="scanFeedback" style="display: none; margin: 10px 0; padding: 10px; border-radius: 4px;"></div>
 
-                    <div class="input-method-toggle">
-                        <button class="active" id="toggleQrScan">Ler QR Code</button>
-                        <button id="toggleManualInput"></button>
-                    </div>
-                    <div class="qr-scanner-container" id="qrScannerContainer">
+                    <div class="qr-scanner-container">
                         <video id="qrScanner" width="100%" playsinline></video>
-                        <button class="switch-camera-btn" id="switchCameraBtn" title="Trocar Câmera">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
                         <button class="btn primary-btn" id="startScannerBtn">
                             <i class="fas fa-qrcode"></i> Ativar Leitor QR Code
                         </button>
                     </div>
 
-                    <div id="operatorInfo" style="display: none;">
-                    Operador: <span id="operatorName"></span>
-                    </div>
-                    <div id="scanFeedback" class="feedback-message"></div>
-
-                    <div class="manual-input-container" id="manualInputContainer">
-                        <input type="text" id="manualCodeInput" placeholder="Digite o código GZL-EO-XXXXX">
-                        <button class="btn primary-btn" id="confirmManualInputBtn" style="margin-top: 10px;">
-                            <i class="fas fa-check"></i> Confirmar Código
-                        </button>
-                    </div>
-
-                    <div class="form-group" id="operatorInfo" style="display: none;">
-                        <h3>Operador: <span id="operatorName"></span></h3>
+                    <div id="operatorInfo" style="display: none; margin: 10px 0;">
+                        Operador: <strong id="operatorName"></strong>
                     </div>
 
                     <div class="form-group">
-                        <label for="dtNumber">DT:</label>
-                        <input type="text" id="dtNumber" placeholder="Número da DT">
+                        <label for="dtNumber">Número da DT:</label>
+                        <input type="text" id="dtNumber" placeholder="Digite o número da DT" required>
                     </div>
 
                     <div class="form-group">
                         <label for="vehicleType">Tipo de Veículo:</label>
-                        <select id="vehicleType">
+                        <select id="vehicleType" required>
+                            <option value="">Selecione...</option>
                             <option value="Caminhão">Caminhão</option>
-                            <option value="other">Outro</option>
+                            <option value="Carreta">Carreta</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label for="dockNumber">Doca:</label>
-                        <select id="dockNumber">
+                        <select id="dockNumber" required>
+                            <option value="">Selecione...</option>
                             <option value="1">Doca 1</option>
                             <option value="2">Doca 2</option>
-                            <option value="3">Doca 3</option>
-                            <option value="4">Doca 4</option>
-                            <option value="5">Doca 5</option>
-                            <option value="6">Doca 6</option>
-                            <option value="7">Doca 7</option>
-                            <option value="8">Doca 8</option>
-                            <option value="9">Doca 9</option>
-                            <option value="10">Doca 10</option>
-                            <option value="11">Doca 11</option>
+                            <!-- Adicione mais docas conforme necessário -->
                         </select>
                     </div>
 
@@ -199,72 +152,38 @@
                 </div>
             </div>
 
-            <!-- Modal Finalizar Amarração -->
+            <!-- Modal Finalizar Operação -->
             <div class="modal" id="finishLoadingModal">
                 <div class="modal-content">
                     <span class="close-modal">&times;</span>
-                    <h2>Finalizar Amarração</h2>
-                    
-                    <div id="bindersFeedback" style="display: none; padding: 10px; margin: 10px 0; border-radius: 4px;"></div>
+                    <h2 id="finishModalTitle">Finalizar Operação</h2>
 
-                    <div class="input-method-toggle">
-                        <button class="active" id="toggleFinishQrScan">Ler QR Code</button>
-                        <button id="toggleFinishManualInput">Digitar Código</button>
-                    </div>
+                    <div id="finishScanFeedback" style="display: none; margin: 10px 0; padding: 10px; border-radius: 4px;"></div>
 
-                    <div id="bindersFeedback" class="feedback-message"></div>
-                    <div id="bindersList" class="binders-list"></div>
-                    
                     <div class="qr-scanner-container">
                         <video id="finishQrScanner" width="100%" playsinline></video>
-                        <button class="switch-camera-btn" id="switchFinishCameraBtn" title="Trocar Câmera">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
                         <button class="btn primary-btn" id="startFinishScannerBtn">
                             <i class="fas fa-qrcode"></i> Ativar Leitor QR Code
                         </button>
                     </div>
 
-                    <div class="manual-input-container" id="finishManualInputContainer">
-                        <input type="text" id="finishManualCodeInput" placeholder="Digite o código GZL-EO-XXXXX">
-                        <button class="btn primary-btn" id="confirmFinishManualInputBtn" style="margin-top: 10px;">
-                            <i class="fas fa-check"></i> Confirmar Código
-                        </button>
+                    <div id="operatorFinishInfo" style="display: none; margin: 10px 0;">
+                        Operador: <strong id="operatorFinishName"></strong>
                     </div>
 
-                    <div id="bindersList" class="binders-list">
-                        <!-- Lista de amarradores será exibida aqui -->
+                    <div id="bindersList" style="display: none; margin: 10px 0; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+                        <h3>Amarradores:</h3>
+                        <!-- Lista de amarradores será gerada aqui -->
                     </div>
 
                     <div class="modal-actions">
                         <button class="btn secondary-btn" id="cancelFinishBtn">Cancelar</button>
-                        <button class="btn primary-btn" id="confirmFinishBtn" disabled>Finalizar Amarração</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal Pausa -->
-            <div class="modal" id="pauseModal">
-                <div class="modal-content">
-                    <span class="close-modal">&times;</span>
-                    <h2>Pausar Operação</h2>
-                    
-                    <div class="form-group">
-                        <label>Selecione as operações para pausar:</label>
-                        <div class="operations-to-pause" id="operationsToPause">
-                            <!-- Lista de operações para pausar -->
-                        </div>
-                    </div>
-
-                    <div class="modal-actions">
-                        <button class="btn secondary-btn" id="cancelPauseBtn">Cancelar</button>
-                        <button class="btn primary-btn" id="confirmPauseBtn">Confirmar Pausa</button>
+                        <button class="btn primary-btn" id="confirmFinishBtn" disabled>Confirmar</button>
                     </div>
                 </div>
             </div>
         </main>
     </div>
-</div>
 
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -274,64 +193,8 @@
     <!-- QR Code Scanner -->
     <script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
     
-    <!-- App Scripts -->
-    <script src="../js/app.js"></script>
+    <!-- App Script -->
+     <script src="../js/app.js"></script>
     <script src="../js/dashboard.js"></script>
-    
-    <script>
-        // Código adicional para gerenciar a alternância entre câmera e entrada manual
-        document.addEventListener('DOMContentLoaded', function() {
-            // Elementos do modal de início
-            const toggleQrScan = document.getElementById('toggleQrScan');
-            const toggleManualInput = document.getElementById('toggleManualInput');
-            const qrScannerContainer = document.getElementById('qrScannerContainer');
-            const manualInputContainer = document.getElementById('manualInputContainer');
-            
-            // Elementos do modal de finalização
-            const toggleFinishQrScan = document.getElementById('toggleFinishQrScan');
-            const toggleFinishManualInput = document.getElementById('toggleFinishManualInput');
-            const finishQrScannerContainer = document.querySelector('#finishLoadingModal .qr-scanner-container');
-            const finishManualInputContainer = document.getElementById('finishManualInputContainer');
-            
-            // Função para alternar entre métodos de entrada
-            function toggleInputMethod(isQr, isStartModal = true) {
-                if (isStartModal) {
-                    if (isQr) {
-                        toggleQrScan.classList.add('active');
-                        toggleManualInput.classList.remove('active');
-                        qrScannerContainer.style.display = 'block';
-                        manualInputContainer.style.display = 'none';
-                    } else {
-                        toggleQrScan.classList.remove('active');
-                        toggleManualInput.classList.add('active');
-                        qrScannerContainer.style.display = 'none';
-                        manualInputContainer.style.display = 'block';
-                    }
-                } else {
-                    if (isQr) {
-                        toggleFinishQrScan.classList.add('active');
-                        toggleFinishManualInput.classList.remove('active');
-                        finishQrScannerContainer.style.display = 'block';
-                        finishManualInputContainer.style.display = 'none';
-                    } else {
-                        toggleFinishQrScan.classList.remove('active');
-                        toggleFinishManualInput.classList.add('active');
-                        finishQrScannerContainer.style.display = 'none';
-                        finishManualInputContainer.style.display = 'block';
-                    }
-                }
-            }
-            
-            // Event listeners para alternância
-            toggleQrScan.addEventListener('click', () => toggleInputMethod(true));
-            toggleManualInput.addEventListener('click', () => toggleInputMethod(false));
-            toggleFinishQrScan.addEventListener('click', () => toggleInputMethod(true, false));
-            toggleFinishManualInput.addEventListener('click', () => toggleInputMethod(false, false));
-            
-            // Inicializar com QR Code ativo
-            toggleInputMethod(true);
-            toggleInputMethod(true, false);
-        });
-    </script>
 </body>
 </html>
