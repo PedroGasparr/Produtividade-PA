@@ -384,31 +384,43 @@ function getStatusLabel(status) {
 }
 
 function startScanner() {
+    // Parar qualquer scanner existente
+    stopAllScanners();
+    
     const video = document.getElementById('qrScanner');
     video.style.display = 'block';
     
     qrScanner = new Instascan.Scanner({
         video: video,
         mirror: false,
-        scanPeriod: 5,
+        scanPeriod: 1, // Scanner mais rápido
         backgroundScan: false
     });
+    
+    // Limpar listeners anteriores
+    qrScanner.removeAllListeners('scan');
     
     qrScanner.addListener('scan', function(content) {
         handleQrScan(content, 'operator');
     });
     
-    Instascan.Camera.getCameras().then(function(cameraList) {
-        cameras = cameraList;
-        if (cameras.length > 0) {
-            qrScanner.start(cameras[currentCameraIndex]);
-        } else {
-            alert('Nenhuma câmera encontrada!');
-        }
-    }).catch(function(e) {
-        console.error(e);
-        alert('Erro ao acessar a câmera');
-    });
+    Instascan.Camera.getCameras()
+        .then(function(cameraList) {
+            cameras = cameraList;
+            if (cameras.length > 0) {
+                return qrScanner.start(cameras[currentCameraIndex]);
+            } else {
+                throw new Error('Nenhuma câmera encontrada!');
+            }
+        })
+        .then(() => {
+            console.log('Scanner iniciado com sucesso');
+        })
+        .catch(function(e) {
+            console.error('Erro ao iniciar scanner:', e);
+            alert('Erro ao acessar a câmera: ' + e.message);
+            document.getElementById('qrScanner').style.display = 'none';
+        });
 }
 
 function startFinishScanner() {
@@ -459,16 +471,21 @@ function startFinishScanner() {
 
 function stopAllScanners() {
     try {
+        // Parar e limpar o scanner de início
         if (qrScanner) {
             qrScanner.stop().catch(e => console.error('Erro ao parar qrScanner:', e));
             document.getElementById('qrScanner').style.display = 'none';
             qrScanner = null;
         }
+        
+        // Parar e limpar o scanner de finalização
         if (finishQrScanner) {
             finishQrScanner.stop().catch(e => console.error('Erro ao parar finishQrScanner:', e));
             document.getElementById('finishQrScanner').style.display = 'none';
             finishQrScanner = null;
         }
+        
+        // Limpar o intervalo de atualização de tempo
         if (timeUpdateInterval) {
             clearInterval(timeUpdateInterval);
             timeUpdateInterval = null;
@@ -522,13 +539,16 @@ function handleQrScan(result, type) {
                 document.getElementById('operatorInfo').style.display = 'block';
                 
                 // Parar o scanner após leitura bem-sucedida
-                if (finishQrScanner) {
-                    finishQrScanner.stop();
-                    document.getElementById('finishQrScanner').style.display = 'none';
-                }
+                stopAllScanners();
                 
                 // Habilita o botão de confirmação
-                document.getElementById('confirmFinishBtn').disabled = false;
+                document.getElementById('confirmLoadingBtn').disabled = false;
+                
+                // Fechar a câmera imediatamente
+                document.getElementById('qrScanner').style.display = 'none';
+                if (qrScanner) {
+                    qrScanner.stop();
+                }
             } else if (type === 'binder') {
                 addBinderToList(employeeData, employeeId);
             }
@@ -587,10 +607,10 @@ function confirmStartLoading() {
     const confirmBtn = document.getElementById('confirmLoadingBtn');
     confirmBtn.disabled = true;
 
-    const dtNumber = document.getElementById('dtNumber').value;
-    const vehicleType = document.getElementById('vehicleType').value;
-    const dockNumber = document.getElementById('dockNumber').value;
-    const operatorName = document.getElementById('operatorName').textContent;
+    const dtNumber = document.getElementById('dtNumber').value.trim();
+    const vehicleType = document.getElementById('vehicleType').value.trim();
+    const dockNumber = document.getElementById('dockNumber').value.trim();
+    const operatorName = document.getElementById('operatorName').textContent.trim();
 
     if (!dtNumber || !vehicleType || !dockNumber || !operatorName) {
         alert('Preencha todos os campos!');
@@ -622,38 +642,26 @@ function confirmStartLoading() {
         createdAt: firebase.database.ServerValue.TIMESTAMP
     };
 
-    // Usar transaction para evitar duplicação
-    const dockRef = db.ref('operations').orderByChild('dock').equalTo(dockNumber);
-    dockRef.once('value').then(snapshot => {
-        let hasActiveOperation = false;
-        
-        snapshot.forEach(child => {
-            const op = child.val();
-            if (['loading', 'binding', 'paused', 'awaiting_binding'].includes(op.status)) {
-                hasActiveOperation = true;
-            }
-        });
-
-        if (hasActiveOperation) {
-            alert(`Já existe uma operação em andamento para a Doca ${dockNumber}!`);
+    // Criar uma nova operação
+    const newOperationRef = operationsRef.push();
+    
+    newOperationRef.set(operation)
+        .then(() => {
+            // Feedback visual para o usuário
+            alert('Carregamento iniciado com sucesso!');
+            
+            // Fechar o modal e resetar o formulário
+            startLoadingModal.style.display = 'none';
+            resetStartLoadingForm();
+            
+            // Habilitar o botão novamente
             confirmBtn.disabled = false;
-            return Promise.reject('Operação duplicada');
-        }
-
-        return operationsRef.push().set(operation);
-    })
-    .then(() => {
-        startLoadingModal.style.display = 'none';
-        resetStartLoadingForm();
-        confirmBtn.disabled = false;
-    })
-    .catch(error => {
-        console.error('Erro ao iniciar operação:', error);
-        if (error !== 'Operação duplicada') {
-            alert('Erro ao iniciar operação');
-        }
-        confirmBtn.disabled = false;
-    });
+        })
+        .catch(error => {
+            console.error('Erro ao iniciar operação:', error);
+            alert('Erro ao iniciar operação: ' + error.message);
+            confirmBtn.disabled = false;
+        });
 }
 
 function saveOperationHistory(operationId) {
