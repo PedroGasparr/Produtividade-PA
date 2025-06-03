@@ -26,29 +26,21 @@ let operationsRef = null;
 let operationsListener = null;
 
 // Inicialização do dashboard
+// No início do seu arquivo JavaScript
 document.addEventListener('DOMContentLoaded', () => {
-     const criticalElements = [
-        'operatorName', 'operatorInfo', 'scanFeedback',
-        'bindersFeedback', 'bindersList', 'confirmLoadingBtn'
+    console.log('Verificando elementos críticos...');
+    const criticalElements = [
+        'dtNumber', 'vehicleType', 'dockNumber', 
+        'operatorName', 'operatorInfo', 'confirmLoadingBtn'
     ];
 
     criticalElements.forEach(id => {
-        if (!document.getElementById(id)) {
-            console.error(`Elemento crítico não encontrado: #${id}`);
+        const el = document.getElementById(id);
+        console.log(`Elemento #${id}:`, el ? 'OK' : 'NÃO ENCONTRADO');
+        if (!el) {
+            console.error(`Elemento crítico faltando: #${id}`);
         }
     });
-    firebase.auth().onAuthStateChanged(user => {
-        if (!user) {
-            window.location.href = 'index.html';
-        } else {
-            currentUser = user;
-            document.getElementById('currentUser').textContent = user.displayName || user.email;
-            initializeOperations();
-        }
-    });
-
-    // Configurar listeners
-    setupEventListeners();
 });
 
 function initializeOperations() {
@@ -587,16 +579,29 @@ function handleQrScan(result, type) {
 }
 
 function handleOperatorScan(employeeData) {
-    const operatorName = document.getElementById('operatorName');
+    const operatorNameElement = document.getElementById('operatorName');
+    const operatorInfoElement = document.getElementById('operatorInfo');
     const confirmBtn = document.getElementById('confirmLoadingBtn');
-    
-    if (!operatorName || !confirmBtn) {
-        return showFeedback('Elementos do formulário não encontrados', 'error', 'operator');
+
+    if (!operatorNameElement || !operatorInfoElement || !confirmBtn) {
+        console.error('Elementos não encontrados:', {
+            operatorName: !!operatorNameElement,
+            operatorInfo: !!operatorInfoElement,
+            confirmBtn: !!confirmBtn
+        });
+        return;
     }
 
-    operatorName.textContent = employeeData.nome;
+    operatorNameElement.textContent = employeeData.nome;
+    operatorInfoElement.innerHTML = `Operador: <strong>${employeeData.nome}</strong>`;
+    operatorInfoElement.style.display = 'block';
     confirmBtn.disabled = false;
-    showFeedback(`Operador ${employeeData.nome} identificado!`, 'success', 'operator');
+
+    // Debug: Verifique no console se os valores estão sendo atribuídos
+    console.log('Operador definido:', {
+        name: operatorNameElement.textContent,
+        buttonDisabled: confirmBtn.disabled
+    });
 }
 
 function handleBinderScan(employeeData, employeeId) {
@@ -787,44 +792,47 @@ function checkBindersList() {
 }
 
 function confirmStartLoading() {
-    // Obter todos os elementos de uma vez com verificações
-    const elements = {
-        dtNumber: document.getElementById('dtNumber'),
-        vehicleType: document.getElementById('vehicleType'),
-        dockNumber: document.getElementById('dockNumber'),
-        operatorName: document.getElementById('operatorName'),
-        confirmBtn: document.getElementById('confirmLoadingBtn')
-    };
-
-    // Verificar se todos os elementos existem
-    for (const [key, element] of Object.entries(elements)) {
+    // 1. Obter todos os valores com verificações de segurança
+    const getValue = (id, isTextContent = false) => {
+        const element = document.getElementById(id);
         if (!element) {
-            console.error(`Elemento não encontrado: ${key}`);
-            return showFeedback('Erro interno no formulário', 'error', 'operator');
+            console.error(`Elemento não encontrado: ${id}`);
+            return null;
         }
-    }
-
-    // Obter valores trimados
-    const values = {
-        dtNumber: elements.dtNumber.value.trim(),
-        vehicleType: elements.vehicleType.value.trim(),
-        dockNumber: elements.dockNumber.value.trim(),
-        operatorName: elements.operatorName.textContent.trim()
+        return isTextContent ? element.textContent.trim() : element.value.trim();
     };
 
-    // Validação completa
-    const errors = [];
-    
-    if (!values.dtNumber) errors.push('Número da DT');
-    if (!values.vehicleType) errors.push('Tipo de Veículo');
-    if (!values.dockNumber) errors.push('Número da Doca');
-    if (!values.operatorName) errors.push('Operador (QR Code)');
+    // 2. Obter todos os valores necessários
+    const values = {
+        dtNumber: getValue('dtNumber'),
+        vehicleType: getValue('vehicleType'),
+        dockNumber: getValue('dockNumber'),
+        operatorName: getValue('operatorName', true) // Text content
+    };
 
-    if (errors.length > 0) {
-        return showFeedback(`Preencha: ${errors.join(', ')}`, 'error', 'operator');
+    // 3. Verificar se algum valor é nulo (elemento não encontrado)
+    if (Object.values(values).some(v => v === null)) {
+        return showFeedback('Erro interno no formulário', 'error', 'operator');
     }
 
-    // Verificar se a doca já está em uso
+    // 4. Validação dos campos
+    const emptyFields = Object.entries(values)
+        .filter(([key, value]) => !value)
+        .map(([key]) => {
+            switch(key) {
+                case 'dtNumber': return 'Número da DT';
+                case 'vehicleType': return 'Tipo de Veículo';
+                case 'dockNumber': return 'Doca';
+                case 'operatorName': return 'Operador (QR Code)';
+                default: return key;
+            }
+        });
+
+    if (emptyFields.length > 0) {
+        return showFeedback(`Preencha: ${emptyFields.join(', ')}`, 'error', 'operator');
+    }
+
+    // 5. Verificar se a doca está disponível
     const isDockInUse = currentOperations.some(op => 
         op.dock === values.dockNumber && 
         ['loading', 'binding', 'paused'].includes(op.status)
@@ -834,10 +842,11 @@ function confirmStartLoading() {
         return showFeedback(`Doca ${values.dockNumber} já está em uso!`, 'error', 'operator');
     }
 
-    // Desabilitar botão durante o processamento
-    elements.confirmBtn.disabled = true;
+    // 6. Desabilitar botão durante o processamento
+    const confirmBtn = document.getElementById('confirmLoadingBtn');
+    if (confirmBtn) confirmBtn.disabled = true;
 
-    // Criar objeto da operação
+    // 7. Criar objeto da operação
     const newOperation = {
         dtNumber: values.dtNumber,
         vehicleType: values.vehicleType,
@@ -849,10 +858,10 @@ function confirmStartLoading() {
         createdAt: firebase.database.ServerValue.TIMESTAMP
     };
 
-    // Adicionar ao Firebase
+    // 8. Adicionar ao Firebase
     db.ref('operations').push(newOperation)
         .then(() => {
-            showFeedback('Carregamento iniciado!', 'success', 'operator');
+            showFeedback('Carregamento iniciado com sucesso!', 'success', 'operator');
             startLoadingModal.style.display = 'none';
             resetStartLoadingForm();
         })
@@ -861,7 +870,7 @@ function confirmStartLoading() {
             showFeedback(`Erro: ${error.message}`, 'error', 'operator');
         })
         .finally(() => {
-            elements.confirmBtn.disabled = false;
+            if (confirmBtn) confirmBtn.disabled = false;
         });
 }
 
