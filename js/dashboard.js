@@ -221,13 +221,13 @@ function renderOperationCard(operation) {
 
 function showFinishLoadingModal(operationId) {
     resetFinishLoadingForm();
-    startLoadingModal.style.display = 'flex';
+    finishLoadingModal.style.display = 'flex';  // Alterado de startLoadingModal para finishLoadingModal
     
     // Configurar o modal para finalização
-    document.querySelector('#startLoadingModal h2').textContent = 'Finalizar Carregamento';
-    document.getElementById('confirmLoadingBtn').textContent = 'Confirmar Finalização';
-    document.getElementById('confirmLoadingBtn').dataset.operationId = operationId;
-    document.getElementById('confirmLoadingBtn').onclick = confirmFinishOperationLoading;
+    document.querySelector('#finishLoadingModal h2').textContent = 'Finalizar Carregamento';  // Alterado para #finishLoadingModal
+    document.getElementById('confirmFinishBtn').textContent = 'Confirmar Finalização';  // Alterado para confirmFinishBtn
+    document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
+    document.getElementById('confirmFinishBtn').onclick = confirmFinishOperationLoading;
     
     // Esconder campos não necessários para finalização
     document.getElementById('dtNumber').style.display = 'none';
@@ -237,9 +237,9 @@ function showFinishLoadingModal(operationId) {
     document.getElementById('startScannerBtn').style.display = 'none';
     
     // Mostrar apenas o scanner
-    document.getElementById('qrScannerContainer').style.display = 'block';
-    document.getElementById('qrScanner').style.display = 'block';
-    startScanner();
+    document.getElementById('finishQrScannerContainer').style.display = 'block';  // Usar finishQrScannerContainer
+    document.getElementById('finishQrScanner').style.display = 'block';  // Usar finishQrScanner
+    startFinishScanner();  // Usar startFinishScanner em vez de startScanner
 }
 
 function startOperationBinding(operationId) {
@@ -357,7 +357,7 @@ function confirmFinishOperationLoading() {
 
     db.ref(`operations/${operationId}`).update(updates)
         .then(() => {
-            startLoadingModal.style.display = 'none';
+            finishLoadingModal.style.display = 'none'; 
             stopAllScanners();
         })
         .catch(error => {
