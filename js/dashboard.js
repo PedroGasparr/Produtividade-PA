@@ -3,6 +3,7 @@ const db = firebase.database();
 
 let currentCameraIndex = 0;
 let cameras = [];
+let currentFinishCameraIndex = 0;
 
 // Elementos da página
 const startLoadingBtn = document.getElementById('startLoadingBtn');
@@ -414,10 +415,15 @@ function startFinishScanner() {
     const video = document.getElementById('finishQrScanner');
     video.style.display = 'block';
     
+    // Parar o scanner existente se houver
+    if (finishQrScanner) {
+        finishQrScanner.stop();
+    }
+    
     finishQrScanner = new Instascan.Scanner({
         video: video,
         mirror: false,
-        scanPeriod: 5,
+        scanPeriod: 1, // Reduzir o tempo de verificação
         backgroundScan: false
     });
     
@@ -425,36 +431,60 @@ function startFinishScanner() {
         handleQrScan(content, 'binder');
     });
     
+    // Limpar listeners anteriores para evitar duplicação
+    finishQrScanner.removeAllListeners('scan');
+    finishQrScanner.addListener('scan', function(content) {
+        handleQrScan(content, 'binder');
+    });
+    
     Instascan.Camera.getCameras().then(function(cameraList) {
-        cameras = cameraList;
-        if (cameras.length > 0) {
-            currentFinishCameraIndex = 0;
-            finishQrScanner.start(cameras[currentFinishCameraIndex]);
+        if (cameraList.length > 0) {
+            currentFinishCameraIndex = currentFinishCameraIndex % cameraList.length;
+            finishQrScanner.start(cameras[currentFinishCameraIndex])
+                .then(() => {
+                    console.log('Scanner de finalização iniciado com sucesso');
+                })
+                .catch(err => {
+                    console.error('Erro ao iniciar scanner de finalização:', err);
+                    alert('Erro ao iniciar câmera. Por favor, recarregue a página e tente novamente.');
+                });
         } else {
             alert('Nenhuma câmera encontrada!');
         }
     }).catch(function(e) {
-        console.error(e);
-        alert('Erro ao acessar a câmera');
+        console.error('Erro ao acessar câmeras:', e);
+        alert('Erro ao acessar a câmera. Verifique as permissões.');
     });
 }
 
 function stopAllScanners() {
-    if (qrScanner) {
-        qrScanner.stop();
-        document.getElementById('qrScanner').style.display = 'none';
-    }
-    if (finishQrScanner) {
-        finishQrScanner.stop();
-        document.getElementById('finishQrScanner').style.display = 'none';
-    }
-    if (timeUpdateInterval) {
-        clearInterval(timeUpdateInterval);
-        timeUpdateInterval = null;
+    try {
+        if (qrScanner) {
+            qrScanner.stop().catch(e => console.error('Erro ao parar qrScanner:', e));
+            document.getElementById('qrScanner').style.display = 'none';
+            qrScanner = null;
+        }
+        if (finishQrScanner) {
+            finishQrScanner.stop().catch(e => console.error('Erro ao parar finishQrScanner:', e));
+            document.getElementById('finishQrScanner').style.display = 'none';
+            finishQrScanner = null;
+        }
+        if (timeUpdateInterval) {
+            clearInterval(timeUpdateInterval);
+            timeUpdateInterval = null;
+        }
+    } catch (e) {
+        console.error('Erro ao parar scanners:', e);
     }
 }
 
 function handleQrScan(result, type) {
+    // Verificar se o resultado é válido
+    if (!result || typeof result !== 'string') {
+        alert('QR Code inválido ou vazio!');
+        return;
+    }
+
     const qrCodeRegex = /^GZL-EO-\d{5}$/;
     if (!qrCodeRegex.test(result)) {
         alert('QR Code inválido! O formato deve ser GZL-EO-XXXXX (onde X são números)');
@@ -463,11 +493,18 @@ function handleQrScan(result, type) {
 
     const employeeId = result.split('-')[2];
     
+    // Mostrar feedback visual de que o QR foi lido
+    const feedbackElement = type === 'operator' 
+        ? document.getElementById('operatorInfo')
+        : document.getElementById('bindersFeedback');
+    
+    feedbackElement.textContent = 'Processando QR Code...';
+    feedbackElement.style.display = 'block';
+
     db.ref(`funcionarios`).orderByChild('codigo').equalTo(result).once('value')
         .then(snapshot => {
             if (!snapshot.exists()) {
-                alert('Funcionário não encontrado! Verifique o QR Code.');
-                return;
+                throw new Error('Funcionário não encontrado!');
             }
 
             let employeeData = null;
@@ -476,28 +513,32 @@ function handleQrScan(result, type) {
             });
 
             if (!employeeData) {
-                alert('Dados do funcionário não encontrados!');
-                return;
+                throw new Error('Dados do funcionário não encontrados!');
             }
             
             if (type === 'operator') {
-                // Atualiza o nome do operador no modal de finalização
                 document.getElementById('operatorName').textContent = employeeData.nome;
+                document.getElementById('operatorInfo').textContent = `Operador: ${employeeData.nome}`;
                 document.getElementById('operatorInfo').style.display = 'block';
                 
-                // Habilita o botão de confirmação no modal correto
-                if (finishLoadingModal.style.display === 'flex') {
-                    document.getElementById('confirmFinishBtn').disabled = false;
+                // Parar o scanner após leitura bem-sucedida
+                if (finishQrScanner) {
+                    finishQrScanner.stop();
+                    document.getElementById('finishQrScanner').style.display = 'none';
                 }
                 
-                stopAllScanners();
+                // Habilita o botão de confirmação
+                document.getElementById('confirmFinishBtn').disabled = false;
             } else if (type === 'binder') {
                 addBinderToList(employeeData, employeeId);
             }
         })
         .catch(error => {
             console.error('Erro ao buscar funcionário:', error);
-            alert('Erro ao buscar dados do funcionário');
+            feedbackElement.textContent = 'Erro: ' + error.message;
+            setTimeout(() => {
+                feedbackElement.style.display = 'none';
+            }, 3000);
         });
 }
 
@@ -520,15 +561,32 @@ function addBinderToList(employee, employeeId) {
         
         bindersList.appendChild(binderItem);
         
-        binderItem.querySelector('.remove-binder-btn').addEventListener('click', () => {
+        binderItem.querySelector('.remove-binder-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
             binderItem.remove();
+            checkBindersList();
         });
         
-        document.getElementById('confirmFinishBtn').disabled = false;
+        checkBindersList();
+    } else {
+        const feedback = document.getElementById('bindersFeedback');
+        feedback.textContent = `${employee.nome} já foi adicionado!`;
+        feedback.style.display = 'block';
+        setTimeout(() => feedback.style.display = 'none', 2000);
     }
 }
 
+function checkBindersList() {
+    const bindersList = document.getElementById('bindersList');
+    const confirmBtn = document.getElementById('confirmFinishBtn');
+    confirmBtn.disabled = bindersList.children.length === 0;
+}
+
 function confirmStartLoading() {
+    // Desabilitar o botão para evitar múltiplos cliques
+    const confirmBtn = document.getElementById('confirmLoadingBtn');
+    confirmBtn.disabled = true;
+
     const dtNumber = document.getElementById('dtNumber').value;
     const vehicleType = document.getElementById('vehicleType').value;
     const dockNumber = document.getElementById('dockNumber').value;
@@ -536,6 +594,19 @@ function confirmStartLoading() {
 
     if (!dtNumber || !vehicleType || !dockNumber || !operatorName) {
         alert('Preencha todos os campos!');
+        confirmBtn.disabled = false;
+        return;
+    }
+
+    // Verificar se já existe uma operação ativa para esta doca
+    const existingOperation = currentOperations.find(op => 
+        op.dock === dockNumber && 
+        ['loading', 'binding', 'paused', 'awaiting_binding'].includes(op.status)
+    );
+
+    if (existingOperation) {
+        alert(`Já existe uma operação em andamento para a Doca ${dockNumber}!`);
+        confirmBtn.disabled = false;
         return;
     }
 
@@ -551,16 +622,38 @@ function confirmStartLoading() {
         createdAt: firebase.database.ServerValue.TIMESTAMP
     };
 
-    const newOperationRef = operationsRef.push();
-    newOperationRef.set(operation)
-        .then(() => {
-            startLoadingModal.style.display = 'none';
-            resetStartLoadingForm();
-        })
-        .catch(error => {
-            console.error('Erro ao iniciar operação:', error);
-            alert('Erro ao iniciar operação');
+    // Usar transaction para evitar duplicação
+    const dockRef = db.ref('operations').orderByChild('dock').equalTo(dockNumber);
+    dockRef.once('value').then(snapshot => {
+        let hasActiveOperation = false;
+        
+        snapshot.forEach(child => {
+            const op = child.val();
+            if (['loading', 'binding', 'paused', 'awaiting_binding'].includes(op.status)) {
+                hasActiveOperation = true;
+            }
         });
+
+        if (hasActiveOperation) {
+            alert(`Já existe uma operação em andamento para a Doca ${dockNumber}!`);
+            confirmBtn.disabled = false;
+            return Promise.reject('Operação duplicada');
+        }
+
+        return operationsRef.push().set(operation);
+    })
+    .then(() => {
+        startLoadingModal.style.display = 'none';
+        resetStartLoadingForm();
+        confirmBtn.disabled = false;
+    })
+    .catch(error => {
+        console.error('Erro ao iniciar operação:', error);
+        if (error !== 'Operação duplicada') {
+            alert('Erro ao iniciar operação');
+        }
+        confirmBtn.disabled = false;
+    });
 }
 
 function saveOperationHistory(operationId) {
