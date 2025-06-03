@@ -1,6 +1,9 @@
 // Inicialização do Firebase
 const db = firebase.database();
 
+let currentCameraIndex = 0;
+let cameras = [];
+
 // Elementos da página
 const startLoadingBtn = document.getElementById('startLoadingBtn');
 const finishLoadingBtn = document.getElementById('finishLoadingBtn');
@@ -64,6 +67,9 @@ function initializeOperations() {
 function setupEventListeners() {
     startLoadingBtn.addEventListener('click', () => startLoadingModal.style.display = 'flex');
     finishLoadingBtn.addEventListener('click', () => finishLoadingModal.style.display = 'flex');
+    document.getElementById('switchCameraBtn').addEventListener('click', switchCamera);
+    document.getElementById('switchFinishCameraBtn').addEventListener('click', switchFinishCamera);
+
     pauseBtn.addEventListener('click', () => showPauseModal());
 
     document.querySelectorAll('.close-modal').forEach(btn => {
@@ -74,6 +80,12 @@ function setupEventListeners() {
             stopAllScanners();
         });
     });
+
+    startLoadingBtn.addEventListener('click', () => {
+    console.log('Botão de iniciar carregamento clicado');
+    startLoadingModal.style.display = 'flex';
+    console.log('Modal deve estar visível agora');
+});
 
     document.getElementById('startScannerBtn').addEventListener('click', startScanner);
     document.getElementById('cancelLoadingBtn').addEventListener('click', () => {
@@ -97,6 +109,22 @@ function setupEventListeners() {
             window.location.href = 'index.html';
         });
     });
+}
+
+function switchCamera() {
+    if (cameras.length < 2) return;
+    
+    currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
+    qrScanner.start(cameras[currentCameraIndex]);
+}
+
+let currentFinishCameraIndex = 0;
+
+function switchFinishCamera() {
+    if (cameras.length < 2) return;
+    
+    currentFinishCameraIndex = (currentFinishCameraIndex + 1) % cameras.length;
+    finishQrScanner.start(cameras[currentFinishCameraIndex]);
 }
 
 function renderOperationCard(operation) {
@@ -172,7 +200,6 @@ function startScanner() {
     const video = document.getElementById('qrScanner');
     video.style.display = 'block';
     
-    // Usando a biblioteca Instascan para melhor leitura de QR codes
     qrScanner = new Instascan.Scanner({
         video: video,
         mirror: false,
@@ -184,9 +211,10 @@ function startScanner() {
         handleQrScan(content, 'operator');
     });
     
-    Instascan.Camera.getCameras().then(function(cameras) {
+    Instascan.Camera.getCameras().then(function(cameraList) {
+        cameras = cameraList;
         if (cameras.length > 0) {
-            qrScanner.start(cameras[0]);
+            qrScanner.start(cameras[currentCameraIndex]);
         } else {
             alert('Nenhuma câmera encontrada!');
         }
@@ -195,6 +223,7 @@ function startScanner() {
         alert('Erro ao acessar a câmera');
     });
 }
+
 
 function startFinishScanner() {
     const video = document.getElementById('finishQrScanner');
@@ -211,18 +240,11 @@ function startFinishScanner() {
         handleQrScan(content, 'binder');
     });
     
-    Instascan.Camera.getCameras().then(function(cameras) {
-        if (cameras.length > 0) {
-            // Usar a câmera traseira se disponível
-            const selectedCamera = cameras.find(c => c.name.toLowerCase().includes('back')) || cameras[0];
-            finishQrScanner.start(selectedCamera);
-        } else {
-            alert('Nenhuma câmera encontrada!');
-        }
-    }).catch(function(e) {
-        console.error(e);
-        alert('Erro ao acessar a câmera');
-    });
+    if (cameras.length > 0) {
+        finishQrScanner.start(cameras[currentFinishCameraIndex]);
+    } else {
+        alert('Nenhuma câmera disponível!');
+    }
 }
 
 function stopAllScanners() {
@@ -235,6 +257,19 @@ function stopAllScanners() {
         document.getElementById('finishQrScanner').style.display = 'none';
     }
 }
+
+// Adicione isso no início do seu dashboard.js para verificar erros
+window.addEventListener('error', function(e) {
+    console.error('Erro global:', e.error);
+    alert('Ocorreu um erro: ' + e.error.message);
+});
+
+// Modifique o event listener do botão para incluir logs
+startLoadingBtn.addEventListener('click', () => {
+    console.log('Botão de iniciar carregamento clicado');
+    startLoadingModal.style.display = 'flex';
+    console.log('Modal deve estar visível agora');
+});
 
 // Função melhorada para lidar com QR Codes
 function handleQrScan(result, type) {
