@@ -58,10 +58,7 @@ function initializeOperations() {
                 renderOperationCard(operation);
             }
         });
-        if (operation.status === 'loading') {
-            card.querySelector('.finish-loading-btn').addEventListener('click', () => finishOperationLoading(operation.id));
-        }
-
+        
         finishLoadingBtn.disabled = currentOperations.length === 0;
         pauseBtn.disabled = currentOperations.length === 0;
         
@@ -73,12 +70,10 @@ function initializeOperations() {
 let timeUpdateInterval = null;
 
 function startTimeUpdates() {
-    // Limpar intervalo anterior se existir
     if (timeUpdateInterval) {
         clearInterval(timeUpdateInterval);
     }
     
-    // Atualizar tempos a cada segundo
     timeUpdateInterval = setInterval(() => {
         currentOperations.forEach(op => {
             const card = document.querySelector(`.operation-card[data-id="${op.id}"]`);
@@ -94,8 +89,12 @@ function startTimeUpdates() {
 }
 
 function setupEventListeners() {
-    startLoadingBtn.addEventListener('click', () => startLoadingModal.style.display = 'flex');
-    finishLoadingBtn.addEventListener('click', () => finishLoadingModal.style.display = 'flex');
+    startLoadingBtn.addEventListener('click', () => {
+        resetStartLoadingForm();
+        startLoadingModal.style.display = 'flex';
+    });
+    
+    finishLoadingBtn.addEventListener('click', () => finishLoadingModal.style.display = 'none');
     document.getElementById('switchCameraBtn').addEventListener('click', switchCamera);
     document.getElementById('switchFinishCameraBtn').addEventListener('click', switchFinishCamera);
 
@@ -109,12 +108,6 @@ function setupEventListeners() {
             stopAllScanners();
         });
     });
-
-    startLoadingBtn.addEventListener('click', () => {
-    console.log('Botão de iniciar carregamento clicado');
-    startLoadingModal.style.display = 'flex';
-    console.log('Modal deve estar visível agora');
-});
 
     document.getElementById('startScannerBtn').addEventListener('click', startScanner);
     document.getElementById('cancelLoadingBtn').addEventListener('click', () => {
@@ -141,31 +134,16 @@ function setupEventListeners() {
 }
 
 function switchCamera() {
-    console.log('Tentando trocar de câmera. Câmeras disponíveis:', cameras);
-    
-    if (cameras.length < 2) {
-        console.log('Menos de 2 câmeras disponíveis. Não é possível trocar.');
-        return;
-    }
+    if (cameras.length < 2) return;
     
     currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
-    console.log('Mudando para câmera:', currentCameraIndex, cameras[currentCameraIndex]);
     
     if (qrScanner) {
         qrScanner.stop().then(() => {
-            console.log('Scanner parado com sucesso');
-            qrScanner.start(cameras[currentCameraIndex]).then(() => {
-                console.log('Scanner iniciado com nova câmera');
-            }).catch(err => {
-                console.error('Erro ao iniciar scanner com nova câmera:', err);
-            });
-        }).catch(err => {
-            console.error('Erro ao parar scanner:', err);
+            qrScanner.start(cameras[currentCameraIndex]);
         });
     }
 }
-
-let currentFinishCameraIndex = 0;
 
 function switchFinishCamera() {
     if (cameras.length < 2) return;
@@ -202,12 +180,6 @@ function renderOperationCard(operation) {
                 <span class="operation-card-detail-label">Operador:</span>
                 <span>${operation.operatorName || 'N/A'}</span>
             </div>
-            ${operation.confirmedBy ? `
-            <div class="operation-card-detail">
-                <span class="operation-card-detail-label">Finalizado por:</span>
-                <span>${operation.confirmedBy}</span>
-            </div>
-            ` : ''}
         </div>
         
         <div class="operation-card-actions">
@@ -233,21 +205,59 @@ function renderOperationCard(operation) {
 
     operationsGrid.appendChild(card);
 
+    // Adicionar event listeners para os botões
+    if (operation.status === 'loading') {
+        card.querySelector('.finish-loading-btn').addEventListener('click', () => showFinishLoadingModal(operation.id));
+    }
+    
     if (operation.status === 'awaiting_binding') {
         card.querySelector('.start-binding-btn').addEventListener('click', () => startOperationBinding(operation.id));
     }
+    
+    if (operation.status === 'binding') {
+        card.querySelector('.finish-binding-btn').addEventListener('click', () => finishOperationBinding(operation.id));
+    }
+}
+
+function showFinishLoadingModal(operationId) {
+    resetFinishLoadingForm();
+    startLoadingModal.style.display = 'flex';
+    
+    // Configurar o modal para finalização
+    document.querySelector('#startLoadingModal h2').textContent = 'Finalizar Carregamento';
+    document.getElementById('confirmLoadingBtn').textContent = 'Confirmar Finalização';
+    document.getElementById('confirmLoadingBtn').dataset.operationId = operationId;
+    document.getElementById('confirmLoadingBtn').onclick = confirmFinishOperationLoading;
+    
+    // Esconder campos não necessários para finalização
+    document.getElementById('dtNumber').style.display = 'none';
+    document.getElementById('vehicleType').style.display = 'none';
+    document.getElementById('dockNumber').style.display = 'none';
+    document.querySelector('.input-method-toggle').style.display = 'none';
+    document.getElementById('startScannerBtn').style.display = 'none';
+    
+    // Mostrar apenas o scanner
+    document.getElementById('qrScannerContainer').style.display = 'block';
+    document.getElementById('qrScanner').style.display = 'block';
+    startScanner();
 }
 
 function startOperationBinding(operationId) {
-    // Abrir modal para escanear QR Code dos amarradores
+    resetFinishLoadingForm();
     finishLoadingModal.style.display = 'flex';
-    document.getElementById('bindersList').innerHTML = '';
-    document.getElementById('confirmFinishBtn').disabled = true;
-    document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
-    document.getElementById('confirmFinishBtn').textContent = 'Iniciar Enlonamento';
-    document.getElementById('confirmFinishBtn').onclick = confirmStartBinding;
+    
+    // Configurar o modal para enlonamento
     document.querySelector('#finishLoadingModal h2').textContent = 'Iniciar Enlonamento';
     document.getElementById('confirmFinishBtn').textContent = 'Iniciar Enlonamento';
+    document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
+    document.getElementById('confirmFinishBtn').onclick = confirmStartBinding;
+    
+    // Mostrar apenas o scanner e lista de amarradores
+    document.getElementById('finishQrScannerContainer').style.display = 'block';
+    document.getElementById('finishQrScanner').style.display = 'block';
+    document.getElementById('bindersList').style.display = 'block';
+    
+    startFinishScanner();
 }
 
 function confirmStartBinding() {
@@ -258,9 +268,7 @@ function confirmStartBinding() {
     const binders = {};
     Array.from(bindersList.children).forEach(item => {
         const employeeId = item.dataset.id;
-        const [name, agePart] = item.textContent.trim().split(' (');
-        const age = agePart ? parseInt(agePart) : 0;
-        binders[employeeId] = { name, age };
+        binders[employeeId] = item.textContent.trim().split(' (')[0]; // Pega apenas o nome
     });
 
     if (Object.keys(binders).length === 0) {
@@ -277,10 +285,84 @@ function confirmStartBinding() {
     db.ref(`operations/${operationId}`).update(updates)
         .then(() => {
             finishLoadingModal.style.display = 'none';
+            stopAllScanners();
         })
         .catch(error => {
             console.error('Erro ao iniciar enlonamento:', error);
             alert('Erro ao iniciar enlonamento');
+        });
+}
+
+function finishOperationBinding(operationId) {
+    resetFinishLoadingForm();
+    finishLoadingModal.style.display = 'flex';
+    
+    // Configurar o modal para finalização de enlonamento
+    document.querySelector('#finishLoadingModal h2').textContent = 'Finalizar Enlonamento';
+    document.getElementById('confirmFinishBtn').textContent = 'Confirmar Finalização';
+    document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
+    document.getElementById('confirmFinishBtn').onclick = confirmFinishOperationBinding;
+    
+    // Mostrar apenas o scanner
+    document.getElementById('finishQrScannerContainer').style.display = 'block';
+    document.getElementById('finishQrScanner').style.display = 'block';
+    document.getElementById('bindersList').style.display = 'none';
+    
+    startFinishScanner();
+}
+
+function confirmFinishOperationBinding() {
+    const operationId = this.dataset.operationId;
+    const operatorName = document.getElementById('operatorName').textContent;
+
+    if (!operatorName) {
+        alert('Por favor, escaneie o QR Code do operador para confirmar!');
+        return;
+    }
+
+    const updates = {
+        status: 'completed',
+        bindingEndTime: firebase.database.ServerValue.TIMESTAMP,
+        confirmedBy: operatorName,
+        confirmedAt: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    db.ref(`operations/${operationId}`).update(updates)
+        .then(() => {
+            finishLoadingModal.style.display = 'none';
+            stopAllScanners();
+            saveOperationHistory(operationId);
+        })
+        .catch(error => {
+            console.error('Erro ao finalizar enlonamento:', error);
+            alert('Erro ao finalizar enlonamento');
+        });
+}
+
+function confirmFinishOperationLoading() {
+    const operationId = this.dataset.operationId;
+    const operatorName = document.getElementById('operatorName').textContent;
+
+    if (!operatorName) {
+        alert('Por favor, escaneie o QR Code do operador para confirmar!');
+        return;
+    }
+
+    const updates = {
+        status: 'awaiting_binding',
+        loadingEndTime: firebase.database.ServerValue.TIMESTAMP,
+        confirmedBy: operatorName,
+        confirmedAt: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    db.ref(`operations/${operationId}`).update(updates)
+        .then(() => {
+            startLoadingModal.style.display = 'none';
+            stopAllScanners();
+        })
+        .catch(error => {
+            console.error('Erro ao finalizar carregamento:', error);
+            alert('Erro ao finalizar carregamento');
         });
 }
 
@@ -289,13 +371,13 @@ function getStatusLabel(status) {
         'loading': 'Carregando',
         'awaiting_binding': 'Aguardando Enlonamento',
         'binding': 'Enlonamento',
-        'completed': 'Concluído'
+        'completed': 'Concluído',
+        'paused': 'Pausado'
     };
     
     return labels[status] || status;
 }
 
-// Funções atualizadas para leitura de QR Code
 function startScanner() {
     const video = document.getElementById('qrScanner');
     video.style.display = 'block';
@@ -324,7 +406,6 @@ function startScanner() {
     });
 }
 
-
 function startFinishScanner() {
     const video = document.getElementById('finishQrScanner');
     video.style.display = 'block';
@@ -340,11 +421,10 @@ function startFinishScanner() {
         handleQrScan(content, 'binder');
     });
     
-    // Carregar câmeras primeiro, como no startScanner
     Instascan.Camera.getCameras().then(function(cameraList) {
         cameras = cameraList;
         if (cameras.length > 0) {
-            currentFinishCameraIndex = 0; // Resetar para a primeira câmera
+            currentFinishCameraIndex = 0;
             finishQrScanner.start(cameras[currentFinishCameraIndex]);
         } else {
             alert('Nenhuma câmera encontrada!');
@@ -370,22 +450,7 @@ function stopAllScanners() {
     }
 }
 
-// Adicione isso no início do seu dashboard.js para verificar erros
-window.addEventListener('error', function(e) {
-    console.error('Erro global:', e.error);
-    alert('Ocorreu um erro: ' + e.error.message);
-});
-
-// Modifique o event listener do botão para incluir logs
-startLoadingBtn.addEventListener('click', () => {
-    console.log('Botão de iniciar carregamento clicado');
-    startLoadingModal.style.display = 'flex';
-    console.log('Modal deve estar visível agora');
-});
-
-// Função melhorada para lidar com QR Codes
 function handleQrScan(result, type) {
-    // Verificar formato do QR Code (GZL-EO-XXXXX)
     const qrCodeRegex = /^GZL-EO-\d{5}$/;
     if (!qrCodeRegex.test(result)) {
         alert('QR Code inválido! O formato deve ser GZL-EO-XXXXX (onde X são números)');
@@ -401,7 +466,6 @@ function handleQrScan(result, type) {
                 return;
             }
 
-            // Obter dados do funcionário
             let employeeData = null;
             snapshot.forEach(child => {
                 employeeData = child.val();
@@ -419,7 +483,6 @@ function handleQrScan(result, type) {
                 stopAllScanners();
             } else if (type === 'binder') {
                 addBinderToList(employeeData, employeeId);
-                stopAllScanners();
             }
         })
         .catch(error => {
@@ -428,7 +491,6 @@ function handleQrScan(result, type) {
         });
 }
 
-// Adicionar amarrador à lista (atualizado para usar ID como chave)
 function addBinderToList(employee, employeeId) {
     const bindersList = document.getElementById('bindersList');
     const existing = Array.from(bindersList.children).some(item => 
@@ -440,7 +502,7 @@ function addBinderToList(employee, employeeId) {
         binderItem.className = 'binder-item';
         binderItem.dataset.id = employeeId;
         binderItem.innerHTML = `
-            <span>${employee.name} (${employee.age} anos)</span>
+            <span>${employee.nome} (${employee.funcao})</span>
             <button class="btn small-btn danger-btn remove-binder-btn">
                 <i class="fas fa-times"></i>
             </button>
@@ -456,7 +518,6 @@ function addBinderToList(employee, employeeId) {
     }
 }
 
-// Confirmar início de carregamento (atualizado para Realtime Database)
 function confirmStartLoading() {
     const dtNumber = document.getElementById('dtNumber').value;
     const vehicleType = document.getElementById('vehicleType').value;
@@ -492,97 +553,6 @@ function confirmStartLoading() {
         });
 }
 
-// Finalizar carregamento (iniciar amarração)
-function finishOperationLoading(operationId) {
-    // Abrir modal para escanear QR Code do operador para confirmar finalização
-    startLoadingModal.style.display = 'flex';
-    
-    // Configurar o modal para finalização
-    document.querySelector('#startLoadingModal h2').textContent = 'Finalizar Carregamento';
-    document.getElementById('confirmLoadingBtn').textContent = 'Confirmar Finalização';
-    document.getElementById('confirmLoadingBtn').dataset.operationId = operationId;
-    document.getElementById('confirmLoadingBtn').onclick = confirmFinishLoading;
-    
-    // Esconder campos não necessários para finalização
-    document.getElementById('dtNumber').style.display = 'none';
-    document.getElementById('vehicleType').style.display = 'none';
-    document.getElementById('dockNumber').style.display = 'none';
-    
-    // Resetar o operador
-    document.getElementById('operatorName').textContent = '';
-    document.getElementById('operatorInfo').style.display = 'none';
-}
-
-// Confirmar finalização de amarração (atualizado para Realtime Database)
-function confirmFinishLoading() {
-    const operationId = this.dataset.operationId;
-    const operatorName = document.getElementById('operatorName').textContent;
-
-    if (!operatorName) {
-        alert('Por favor, escaneie o QR Code do operador para confirmar!');
-        return;
-    }
-
-    const updates = {
-        status: 'awaiting_binding',
-        loadingEndTime: firebase.database.ServerValue.TIMESTAMP,
-        confirmedBy: operatorName,
-        confirmedAt: firebase.database.ServerValue.TIMESTAMP
-    };
-
-    db.ref(`operations/${operationId}`).update(updates)
-        .then(() => {
-            startLoadingModal.style.display = 'none';
-            resetFinishLoadingForm();
-        })
-        .catch(error => {
-            console.error('Erro ao finalizar carregamento:', error);
-            alert('Erro ao finalizar carregamento');
-        });
-}
-
-function resetFinishLoadingForm() {
-    // Restaurar o modal ao estado original
-    document.querySelector('#startLoadingModal h2').textContent = 'Iniciar Carregamento';
-    document.getElementById('confirmLoadingBtn').textContent = 'Iniciar Carregamento';
-    document.getElementById('confirmLoadingBtn').onclick = confirmStartLoading;
-    
-    // Mostrar campos novamente
-    document.getElementById('dtNumber').style.display = 'block';
-    document.getElementById('vehicleType').style.display = 'block';
-    document.getElementById('dockNumber').style.display = 'block';
-    
-    // Resetar operador
-    document.getElementById('operatorName').textContent = '';
-    document.getElementById('operatorInfo').style.display = 'none';
-}
-
-// Finalizar amarração completamente (atualizado para Realtime Database)
-function finishOperationBinding(operationId) {
-    const operation = currentOperations.find(op => op.id === operationId);
-    
-    if (!operation) {
-        alert('Operação não encontrada!');
-        return;
-    }
-
-    const updates = {
-        status: 'completed',
-        bindingEndTime: firebase.database.ServerValue.TIMESTAMP
-    };
-
-    db.ref(`operations/${operationId}`).update(updates)
-        .then(() => {
-            // Calcular tempos totais e salvar no histórico
-            saveOperationHistory(operationId);
-        })
-        .catch(error => {
-            console.error('Erro ao finalizar operação:', error);
-            alert('Erro ao finalizar operação');
-        });
-}
-
-// Salvar no histórico (atualizado para Realtime Database)
 function saveOperationHistory(operationId) {
     const operation = currentOperations.find(op => op.id === operationId);
     
@@ -619,7 +589,6 @@ function saveOperationHistory(operationId) {
     db.ref('history').push(historyData);
 }
 
-// Mostrar modal de pausa
 function showPauseModal() {
     const operationsToPause = document.getElementById('operationsToPause');
     operationsToPause.innerHTML = '';
@@ -639,7 +608,6 @@ function showPauseModal() {
     pauseModal.style.display = 'flex';
 }
 
-// Confirmar pausa (atualizado para Realtime Database)
 function confirmPause() {
     const selectedOperations = Array.from(document.querySelectorAll('#operationsToPause input:checked'))
         .map(input => input.value);
@@ -656,7 +624,6 @@ function confirmPause() {
         const operation = currentOperations.find(op => op.id === opId);
         
         if (operation) {
-            // Adiciona um registro de pausa
             const pauses = operation.pauses || {};
             const pauseId = generateId();
             pauses[pauseId] = { start: now };
@@ -676,53 +643,6 @@ function confirmPause() {
         });
 }
 
-// Retomar operação pausada (atualizado para Realtime Database)
-function resumeOperation(operationId) {
-    const operation = currentOperations.find(op => op.id === operationId);
-    
-    if (!operation || !operation.pauses || Object.keys(operation.pauses).length === 0) {
-        alert('Operação inválida para retomar!');
-        return;
-    }
-
-    // Encontrar a última pausa (que ainda não tem fim)
-    let lastPauseId = null;
-    let lastPause = null;
-    
-    Object.entries(operation.pauses).forEach(([pauseId, pause]) => {
-        if (!pause.end) {
-            lastPauseId = pauseId;
-            lastPause = pause;
-        }
-    });
-
-    if (!lastPauseId) {
-        alert('Esta operação já está ativa!');
-        return;
-    }
-
-    const updates = {
-        [`operations/${operationId}/status`]: operation.loadingEndTime ? 'binding' : 'loading',
-        [`operations/${operationId}/pauses/${lastPauseId}/end`]: firebase.database.ServerValue.TIMESTAMP
-    };
-
-    db.ref().update(updates)
-        .catch(error => {
-            console.error('Erro ao retomar operação:', error);
-            alert('Erro ao retomar operação');
-        });
-}
-
-// Funções auxiliares
-function resetStartLoadingForm() {
-    document.getElementById('dtNumber').value = '';
-    document.getElementById('vehicleType').value = 'truck';
-    document.getElementById('dockNumber').value = '1';
-    document.getElementById('operatorName').textContent = '';
-    document.getElementById('operatorInfo').style.display = 'none';
-    document.getElementById('confirmLoadingBtn').disabled = true;
-}
-
 function calculateElapsedTime(operation) {
     if (!operation.startTime) return 0;
     
@@ -738,7 +658,7 @@ function calculateElapsedTime(operation) {
         });
     }
     
-    return Math.floor((end - start - pausedTime) / 1000); // Retorna em segundos
+    return Math.floor((end - start - pausedTime) / 1000);
 }
 
 function formatTime(seconds) {
@@ -749,48 +669,34 @@ function formatTime(seconds) {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
-
 function generateId() {
     return db.ref().push().key;
 }
 
-// Implementação simplificada do QrScanner para exemplo (mantida igual)
-class QrScanner {
-    constructor(videoElement, callback, options) {
-        this.video = videoElement;
-        this.callback = callback;
-        this.options = options || {};
-        this.stream = null;
-        this.interval = null;
-    }
-    
-    start() {
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-            .then(stream => {
-                this.stream = stream;
-                this.video.srcObject = stream;
-                this.video.play();
-                
-                // Simulação de leitura QR Code
-                this.interval = setInterval(() => {
-                    // Em um caso real, aqui você usaria uma biblioteca como jsQR
-                    // para ler o QR code do vídeo
-                    if (Math.random() > 0.9) { // Simula leitura aleatória para exemplo
-                        this.callback('GZL-EO-123456'); // QR Code de exemplo
-                    }
-                }, 1000);
-            })
-            .catch(error => {
-                console.error('Erro ao acessar câmera:', error);
-                alert('Não foi possível acessar a câmera');
-            });
-    }
-    
-    stop() {
-        if (this.interval) clearInterval(this.interval);
-        if (this.stream) {
-            this.stream.getTracks().forEach(track => track.stop());
-            this.video.srcObject = null;
-        }
-    }
+function resetStartLoadingForm() {
+    document.getElementById('dtNumber').value = '';
+    document.getElementById('vehicleType').value = 'Caminhão';
+    document.getElementById('dockNumber').value = '1';
+    document.getElementById('operatorName').textContent = '';
+    document.getElementById('operatorInfo').style.display = 'none';
+    document.getElementById('confirmLoadingBtn').disabled = true;
+    document.getElementById('confirmLoadingBtn').onclick = confirmStartLoading;
+    document.querySelector('#startLoadingModal h2').textContent = 'Iniciar Carregamento';
+    document.getElementById('confirmLoadingBtn').textContent = 'Iniciar Carregamento';
+    document.getElementById('dtNumber').style.display = 'block';
+    document.getElementById('vehicleType').style.display = 'block';
+    document.getElementById('dockNumber').style.display = 'block';
+    document.querySelector('.input-method-toggle').style.display = 'flex';
+    document.getElementById('startScannerBtn').style.display = 'block';
+}
+
+function resetFinishLoadingForm() {
+    document.getElementById('operatorName').textContent = '';
+    document.getElementById('operatorInfo').style.display = 'none';
+    document.getElementById('confirmFinishBtn').disabled = true;
+    document.getElementById('bindersList').innerHTML = '';
+    document.querySelector('#finishLoadingModal h2').textContent = 'Finalizar Amarração';
+    document.getElementById('confirmFinishBtn').textContent = 'Finalizar Amarração';
+    document.getElementById('finishQrScannerContainer').style.display = 'none';
+    document.getElementById('bindersList').style.display = 'none';
 }
