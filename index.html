@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Produtividade PA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card" id="loginCard">
+            <img src="img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo" class="logo">
+            <h1>Bem-vindo ao Sistema PA</h1>
+            <p class="subtitle">Faça login para acessar seu painel</p>
+            
+            <form id="loginForm">
+                <div class="input-group">
+                    <label for="loginEmail">E-mail</label>
+                    <input type="email" id="loginEmail" required placeholder="seu@email.com">
+                </div>
+                
+                <div class="input-group">
+                    <label for="loginPassword">Senha</label>
+                    <div class="password-container">
+                        <input type="password" id="loginPassword" required placeholder="••••••••">
+                        <i class="fas fa-eye toggle-password" data-target="loginPassword"></i>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn primary-btn">Entrar</button>
+                <button type="button" class="btn google-btn" id="googleLogin">
+                    <i class="fab fa-google"></i> Entrar com Google
+                </button>
+                
+                <div class="auth-links">
+                    <a href="#" id="showForgotPassword">Esqueci minha senha</a>
+                    <a href="#" id="showRegister">Criar uma conta</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="auth-card hidden" id="registerCard">
+            <img src="img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo" class="logo">
+            <h1>Criar nova conta</h1>
+            <p class="subtitle">Preencha os dados para se registrar</p>
+            
+            <form id="registerForm">
+                <div class="input-group">
+                    <label for="registerName">Nome completo</label>
+                    <input type="text" id="registerName" required placeholder="Seu nome">
+                </div>
+                
+                <div class="input-group">
+                    <label for="registerEmail">E-mail</label>
+                    <input type="email" id="registerEmail" required placeholder="seu@email.com">
+                </div>
+                
+                <div class="input-group">
+                    <label for="registerPassword">Senha</label>
+                    <div class="password-container">
+                        <input type="password" id="registerPassword" required placeholder="••••••••" minlength="6">
+                        <i class="fas fa-eye toggle-password" data-target="registerPassword"></i>
+                    </div>
+                    <small class="hint">Mínimo de 6 caracteres</small>
+                </div>
+                
+                <div class="input-group">
+                    <label for="registerConfirmPassword">Confirmar senha</label>
+                    <div class="password-container">
+                        <input type="password" id="registerConfirmPassword" required placeholder="••••••••">
+                        <i class="fas fa-eye toggle-password" data-target="registerConfirmPassword"></i>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn primary-btn">Registrar</button>
+                <div class="auth-links">
+                    <a href="#" id="showLogin">Já tenho uma conta</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="auth-card hidden" id="forgotPasswordCard">
+            <img src="img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo" class="logo">
+            <h1>Recuperar senha</h1>
+            <p class="subtitle">Informe seu e-mail para redefinir a senha</p>
+            
+            <form id="forgotPasswordForm">
+                <div class="input-group">
+                    <label for="forgotEmail">E-mail</label>
+                    <input type="email" id="forgotEmail" required placeholder="seu@email.com">
+                </div>
+                
+                <button type="submit" class="btn primary-btn">Enviar link de recuperação</button>
+                <div class="auth-links">
+                    <a href="#" id="showLoginFromForgot">Voltar para login</a>
+                </div>
+            </form>
+        </div>
+
+        <div id="authMessage" class="message hidden"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
