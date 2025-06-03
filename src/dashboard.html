@@ -251,6 +251,27 @@
             </div>
         </main>
     </div>
+    <div id="finishLoadingModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Finalizar Carregamento</h2>
+        
+        <div id="finishQrScannerContainer">
+            <video id="finishQrScanner" playsinline></video>
+        </div>
+        
+        <div id="operatorInfo" style="display: none;">
+            <p>Operador: <span id="operatorName"></span></p>
+        </div>
+        
+        <div id="bindersList" class="binders-list"></div>
+        
+        <div class="modal-actions">
+            <button id="cancelFinishBtn" class="btn secondary-btn">Cancelar</button>
+            <button id="confirmFinishBtn" class="btn primary-btn" disabled>Confirmar Finalização</button>
+        </div>
+    </div>
+</div>
 
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>

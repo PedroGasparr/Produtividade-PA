@@ -207,7 +207,7 @@ function renderOperationCard(operation) {
 
     // Adicionar event listeners para os botões
     if (operation.status === 'loading') {
-        card.querySelector('.finish-loading-btn').addEventListener('click', () => showFinishLoadingModal(operation.id));
+    card.querySelector('.finish-loading-btn').addEventListener('click', () => showFinishLoadingModal(operation.id));
     }
     
     if (operation.status === 'awaiting_binding') {
@@ -220,26 +220,30 @@ function renderOperationCard(operation) {
 }
 
 function showFinishLoadingModal(operationId) {
+    // Resetar o formulário de finalização
     resetFinishLoadingForm();
-    finishLoadingModal.style.display = 'flex';  // Alterado de startLoadingModal para finishLoadingModal
     
-    // Configurar o modal para finalização
-    document.querySelector('#finishLoadingModal h2').textContent = 'Finalizar Carregamento';  // Alterado para #finishLoadingModal
-    document.getElementById('confirmFinishBtn').textContent = 'Confirmar Finalização';  // Alterado para confirmFinishBtn
-    document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
-    document.getElementById('confirmFinishBtn').onclick = confirmFinishOperationLoading;
+    // Configurar o modal de finalização
+    finishLoadingModal.style.display = 'flex';
+    document.querySelector('#finishLoadingModal h2').textContent = 'Finalizar Carregamento';
+    document.getElementById('confirmFinishBtn').textContent = 'Confirmar Finalização';
     
-    // Esconder campos não necessários para finalização
-    document.getElementById('dtNumber').style.display = 'none';
-    document.getElementById('vehicleType').style.display = 'none';
-    document.getElementById('dockNumber').style.display = 'none';
-    document.querySelector('.input-method-toggle').style.display = 'none';
-    document.getElementById('startScannerBtn').style.display = 'none';
+    // Configurar o botão de confirmação
+    const confirmBtn = document.getElementById('confirmFinishBtn');
+    confirmBtn.dataset.operationId = operationId;
+    confirmBtn.onclick = function() {
+        confirmFinishOperationLoading.call(this); // Garante que o 'this' seja o botão
+    };
     
-    // Mostrar apenas o scanner
-    document.getElementById('finishQrScannerContainer').style.display = 'block';  // Usar finishQrScannerContainer
-    document.getElementById('finishQrScanner').style.display = 'block';  // Usar finishQrScanner
-    startFinishScanner();  // Usar startFinishScanner em vez de startScanner
+    // Mostrar apenas os elementos necessários
+    document.getElementById('finishQrScannerContainer').style.display = 'block';
+    document.getElementById('finishQrScanner').style.display = 'block';
+    
+    // Iniciar o scanner
+    startFinishScanner();
+    
+    // Esconder elementos não necessários
+    document.getElementById('bindersList').style.display = 'none';
 }
 
 function startOperationBinding(operationId) {
@@ -357,7 +361,7 @@ function confirmFinishOperationLoading() {
 
     db.ref(`operations/${operationId}`).update(updates)
         .then(() => {
-            finishLoadingModal.style.display = 'none'; 
+            finishLoadingModal.style.display = 'none';
             stopAllScanners();
         })
         .catch(error => {
@@ -477,9 +481,15 @@ function handleQrScan(result, type) {
             }
             
             if (type === 'operator') {
+                // Atualiza o nome do operador no modal de finalização
                 document.getElementById('operatorName').textContent = employeeData.nome;
                 document.getElementById('operatorInfo').style.display = 'block';
-                document.getElementById('confirmLoadingBtn').disabled = false;
+                
+                // Habilita o botão de confirmação no modal correto
+                if (finishLoadingModal.style.display === 'flex') {
+                    document.getElementById('confirmFinishBtn').disabled = false;
+                }
+                
                 stopAllScanners();
             } else if (type === 'binder') {
                 addBinderToList(employeeData, employeeId);
