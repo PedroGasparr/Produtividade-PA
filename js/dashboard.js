@@ -612,54 +612,57 @@ function confirmStartLoading() {
     const dockNumber = document.getElementById('dockNumber').value.trim();
     const operatorName = document.getElementById('operatorName').textContent.trim();
 
+    // Validação dos campos
     if (!dtNumber || !vehicleType || !dockNumber || !operatorName) {
-        alert('Preencha todos os campos!');
+        alert('Por favor, preencha todos os campos obrigatórios!');
         confirmBtn.disabled = false;
         return;
     }
 
-    // Verificar se já existe uma operação ativa para esta doca
-    const existingOperation = currentOperations.find(op => 
+    // Verificar se já existe operação ativa para esta doca
+    const isDockInUse = currentOperations.some(op => 
         op.dock === dockNumber && 
-        ['loading', 'binding', 'paused', 'awaiting_binding'].includes(op.status)
+        ['loading', 'binding', 'paused'].includes(op.status)
     );
 
-    if (existingOperation) {
-        alert(`Já existe uma operação em andamento para a Doca ${dockNumber}!`);
+    if (isDockInUse) {
+        alert(`A doca ${dockNumber} já está em uso!`);
         confirmBtn.disabled = false;
         return;
     }
 
-    const operation = {
+    // Criar objeto da operação
+    const newOperation = {
         dtNumber,
         vehicleType,
         dock: dockNumber,
         operatorName,
         status: 'loading',
         startTime: firebase.database.ServerValue.TIMESTAMP,
-        pauses: {},
         createdBy: currentUser.uid,
         createdAt: firebase.database.ServerValue.TIMESTAMP
     };
 
-    // Criar uma nova operação
-    const newOperationRef = operationsRef.push();
+    // Referência para as operações
+    const operationsRef = firebase.database().ref('operations');
     
-    newOperationRef.set(operation)
+    // Adicionar nova operação
+    operationsRef.push(newOperation)
         .then(() => {
-            // Feedback visual para o usuário
+            // Feedback para o usuário
             alert('Carregamento iniciado com sucesso!');
             
-            // Fechar o modal e resetar o formulário
+            // Fechar o modal
             startLoadingModal.style.display = 'none';
-            resetStartLoadingForm();
             
-            // Habilitar o botão novamente
-            confirmBtn.disabled = false;
+            // Resetar o formulário
+            resetStartLoadingForm();
         })
         .catch(error => {
-            console.error('Erro ao iniciar operação:', error);
-            alert('Erro ao iniciar operação: ' + error.message);
+            console.error('Erro ao iniciar carregamento:', error);
+            alert('Ocorreu um erro ao iniciar o carregamento. Por favor, tente novamente.');
+        })
+        .finally(() => {
             confirmBtn.disabled = false;
         });
 }
