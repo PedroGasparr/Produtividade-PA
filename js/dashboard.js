@@ -53,11 +53,14 @@ function initializeOperations() {
         
         snapshot.forEach(childSnapshot => {
             const operation = { id: childSnapshot.key, ...childSnapshot.val() };
-            if (['loading', 'binding', 'paused'].includes(operation.status)) {
+            if (['loading', 'binding', 'paused', 'awaiting_binding'].includes(operation.status)) {
                 currentOperations.push(operation);
                 renderOperationCard(operation);
             }
         });
+        if (operation.status === 'loading') {
+            card.querySelector('.finish-loading-btn').addEventListener('click', () => finishOperationLoading(operation.id));
+        }
 
         finishLoadingBtn.disabled = currentOperations.length === 0;
         pauseBtn.disabled = currentOperations.length === 0;
@@ -243,6 +246,8 @@ function startOperationBinding(operationId) {
     document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
     document.getElementById('confirmFinishBtn').textContent = 'Iniciar Enlonamento';
     document.getElementById('confirmFinishBtn').onclick = confirmStartBinding;
+    document.querySelector('#finishLoadingModal h2').textContent = 'Iniciar Enlonamento';
+    document.getElementById('confirmFinishBtn').textContent = 'Iniciar Enlonamento';
 }
 
 function confirmStartBinding() {
@@ -744,16 +749,6 @@ function formatTime(seconds) {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
-function getStatusLabel(status) {
-    const labels = {
-        'loading': 'Carregando',
-        'binding': 'Amarrando',
-        'paused': 'Pausado',
-        'completed': 'Concluído'
-    };
-    
-    return labels[status] || status;
-}
 
 function generateId() {
     return db.ref().push().key;
