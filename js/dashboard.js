@@ -587,28 +587,16 @@ function handleQrScan(result, type) {
 }
 
 function handleOperatorScan(employeeData) {
-    const elements = {
-        name: getElementSafe('operatorName', 'handleOperatorScan'),
-        info: document.getElementById('operatorInfo'),
-        feedback: document.getElementById('scanFeedback'),
-        confirmBtn: document.getElementById('confirmLoadingBtn')
-    };
-
-    // Verifica TODOS os elementos necessários
-    if (!elements.name || !elements.info || !elements.feedback || !elements.confirmBtn) {
-        console.error('Elementos do DOM não encontrados! Verifique seus IDs:');
-        console.table(elements);
-        return showFeedback('Erro interno: elementos faltando', 'error', 'operator');
+    const operatorName = document.getElementById('operatorName');
+    const confirmBtn = document.getElementById('confirmLoadingBtn');
+    
+    if (!operatorName || !confirmBtn) {
+        return showFeedback('Elementos do formulário não encontrados', 'error', 'operator');
     }
 
-    // Atualiza a interface
-    elements.name.textContent = employeeData.nome;
-    elements.info.innerHTML = `Operador: <strong>${employeeData.nome}</strong>`;
-    elements.info.style.display = 'block';
-    elements.confirmBtn.disabled = false;
-
+    operatorName.textContent = employeeData.nome;
+    confirmBtn.disabled = false;
     showFeedback(`Operador ${employeeData.nome} identificado!`, 'success', 'operator');
-    stopScanner();
 }
 
 function handleBinderScan(employeeData, employeeId) {
@@ -799,67 +787,81 @@ function checkBindersList() {
 }
 
 function confirmStartLoading() {
-    // Desabilitar o botão para evitar múltiplos cliques
-    const confirmBtn = document.getElementById('confirmLoadingBtn');
-    confirmBtn.disabled = true;
+    // Obter todos os elementos de uma vez com verificações
+    const elements = {
+        dtNumber: document.getElementById('dtNumber'),
+        vehicleType: document.getElementById('vehicleType'),
+        dockNumber: document.getElementById('dockNumber'),
+        operatorName: document.getElementById('operatorName'),
+        confirmBtn: document.getElementById('confirmLoadingBtn')
+    };
 
-    const dtNumber = document.getElementById('dtNumber').value.trim();
-    const vehicleType = document.getElementById('vehicleType').value.trim();
-    const dockNumber = document.getElementById('dockNumber').value.trim();
-    const operatorName = getElementSafe('operatorName', 'handleOperatorScan').textContent.trim();
-
-    // Validação dos campos
-    if (!dtNumber || !vehicleType || !dockNumber || !operatorName) {
-        alert('Por favor, preencha todos os campos obrigatórios!');
-        confirmBtn.disabled = false;
-        return;
+    // Verificar se todos os elementos existem
+    for (const [key, element] of Object.entries(elements)) {
+        if (!element) {
+            console.error(`Elemento não encontrado: ${key}`);
+            return showFeedback('Erro interno no formulário', 'error', 'operator');
+        }
     }
 
-    // Verificar se já existe operação ativa para esta doca
+    // Obter valores trimados
+    const values = {
+        dtNumber: elements.dtNumber.value.trim(),
+        vehicleType: elements.vehicleType.value.trim(),
+        dockNumber: elements.dockNumber.value.trim(),
+        operatorName: elements.operatorName.textContent.trim()
+    };
+
+    // Validação completa
+    const errors = [];
+    
+    if (!values.dtNumber) errors.push('Número da DT');
+    if (!values.vehicleType) errors.push('Tipo de Veículo');
+    if (!values.dockNumber) errors.push('Número da Doca');
+    if (!values.operatorName) errors.push('Operador (QR Code)');
+
+    if (errors.length > 0) {
+        return showFeedback(`Preencha: ${errors.join(', ')}`, 'error', 'operator');
+    }
+
+    // Verificar se a doca já está em uso
     const isDockInUse = currentOperations.some(op => 
-        op.dock === dockNumber && 
+        op.dock === values.dockNumber && 
         ['loading', 'binding', 'paused'].includes(op.status)
     );
 
     if (isDockInUse) {
-        alert(`A doca ${dockNumber} já está em uso!`);
-        confirmBtn.disabled = false;
-        return;
+        return showFeedback(`Doca ${values.dockNumber} já está em uso!`, 'error', 'operator');
     }
+
+    // Desabilitar botão durante o processamento
+    elements.confirmBtn.disabled = true;
 
     // Criar objeto da operação
     const newOperation = {
-        dtNumber,
-        vehicleType,
-        dock: dockNumber,
-        operatorName,
+        dtNumber: values.dtNumber,
+        vehicleType: values.vehicleType,
+        dock: values.dockNumber,
+        operatorName: values.operatorName,
         status: 'loading',
         startTime: firebase.database.ServerValue.TIMESTAMP,
         createdBy: currentUser.uid,
         createdAt: firebase.database.ServerValue.TIMESTAMP
     };
 
-    // Referência para as operações
-    const operationsRef = firebase.database().ref('operations');
-    
-    // Adicionar nova operação
-    operationsRef.push(newOperation)
+    // Adicionar ao Firebase
+    db.ref('operations').push(newOperation)
         .then(() => {
-            // Feedback para o usuário
-            alert('Carregamento iniciado com sucesso!');
-            
-            // Fechar o modal
+            showFeedback('Carregamento iniciado!', 'success', 'operator');
             startLoadingModal.style.display = 'none';
-            
-            // Resetar o formulário
             resetStartLoadingForm();
         })
         .catch(error => {
-            console.error('Erro ao iniciar carregamento:', error);
-            alert('Ocorreu um erro ao iniciar o carregamento. Por favor, tente novamente.');
+            console.error('Erro ao iniciar:', error);
+            showFeedback(`Erro: ${error.message}`, 'error', 'operator');
         })
         .finally(() => {
-            confirmBtn.disabled = false;
+            elements.confirmBtn.disabled = false;
         });
 }
 
@@ -991,20 +993,24 @@ function generateId() {
 }
 
 function resetStartLoadingForm() {
-    document.getElementById('dtNumber').value = '';
-    document.getElementById('vehicleType').value = 'Caminhão';
-    document.getElementById('dockNumber').value = '1';
-    getElementSafe('operatorName', 'handleOperatorScan').textContent = '';
-    document.getElementById('operatorInfo').style.display = 'none';
-    document.getElementById('confirmLoadingBtn').disabled = true;
-    document.getElementById('confirmLoadingBtn').onclick = confirmStartLoading;
-    document.querySelector('#startLoadingModal h2').textContent = 'Iniciar Carregamento';
-    document.getElementById('confirmLoadingBtn').textContent = 'Iniciar Carregamento';
-    document.getElementById('dtNumber').style.display = 'block';
-    document.getElementById('vehicleType').style.display = 'block';
-    document.getElementById('dockNumber').style.display = 'block';
-    document.querySelector('.input-method-toggle').style.display = 'flex';
-    document.getElementById('startScannerBtn').style.display = 'block';
+    const elements = {
+        dtNumber: document.getElementById('dtNumber'),
+        vehicleType: document.getElementById('vehicleType'),
+        dockNumber: document.getElementById('dockNumber'),
+        operatorName: document.getElementById('operatorName'),
+        operatorInfo: document.getElementById('operatorInfo'),
+        confirmBtn: document.getElementById('confirmLoadingBtn'),
+        feedback: document.getElementById('scanFeedback')
+    };
+
+    // Resetar valores
+    if (elements.dtNumber) elements.dtNumber.value = '';
+    if (elements.vehicleType) elements.vehicleType.value = 'Caminhão';
+    if (elements.dockNumber) elements.dockNumber.value = '1';
+    if (elements.operatorName) elements.operatorName.textContent = '';
+    if (elements.operatorInfo) elements.operatorInfo.style.display = 'none';
+    if (elements.confirmBtn) elements.confirmBtn.disabled = true;
+    if (elements.feedback) elements.feedback.style.display = 'none';
 }
 
 function resetFinishLoadingForm() {
