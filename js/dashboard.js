@@ -199,10 +199,10 @@ function renderOperationCard(operation) {
                 <span class="operation-card-detail-label">Operador:</span>
                 <span>${operation.operatorName || 'N/A'}</span>
             </div>
-            ${operation.binders && Object.keys(operation.binders).length > 0 ? `
+            ${operation.confirmedBy ? `
             <div class="operation-card-detail">
-                <span class="operation-card-detail-label">Amarradores:</span>
-                <span>${Object.values(operation.binders).map(b => b.name).join(', ')}</span>
+                <span class="operation-card-detail-label">Finalizado por:</span>
+                <span>${operation.confirmedBy}</span>
             </div>
             ` : ''}
         </div>
@@ -214,15 +214,15 @@ function renderOperationCard(operation) {
             </button>
             ` : ''}
             
-            ${operation.status === 'binding' ? `
-            <button class="btn small-btn primary-btn finish-binding-btn" data-id="${operation.id}">
-                <i class="fas fa-check"></i> Finalizar Amarração
+            ${operation.status === 'awaiting_binding' ? `
+            <button class="btn small-btn primary-btn start-binding-btn" data-id="${operation.id}">
+                <i class="fas fa-play"></i> Iniciar Enlonamento
             </button>
             ` : ''}
             
-            ${operation.status === 'paused' ? `
-            <button class="btn small-btn secondary-btn resume-btn" data-id="${operation.id}">
-                <i class="fas fa-play"></i> Retomar
+            ${operation.status === 'binding' ? `
+            <button class="btn small-btn primary-btn finish-binding-btn" data-id="${operation.id}">
+                <i class="fas fa-check"></i> Finalizar Enlonamento
             </button>
             ` : ''}
         </div>
@@ -230,13 +230,64 @@ function renderOperationCard(operation) {
 
     operationsGrid.appendChild(card);
 
-    if (operation.status === 'loading') {
-        card.querySelector('.finish-loading-btn').addEventListener('click', () => finishOperationLoading(operation.id));
-    } else if (operation.status === 'binding') {
-        card.querySelector('.finish-binding-btn').addEventListener('click', () => finishOperationBinding(operation.id));
-    } else if (operation.status === 'paused') {
-        card.querySelector('.resume-btn').addEventListener('click', () => resumeOperation(operation.id));
+    if (operation.status === 'awaiting_binding') {
+        card.querySelector('.start-binding-btn').addEventListener('click', () => startOperationBinding(operation.id));
     }
+}
+
+function startOperationBinding(operationId) {
+    // Abrir modal para escanear QR Code dos amarradores
+    finishLoadingModal.style.display = 'flex';
+    document.getElementById('bindersList').innerHTML = '';
+    document.getElementById('confirmFinishBtn').disabled = true;
+    document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
+    document.getElementById('confirmFinishBtn').textContent = 'Iniciar Enlonamento';
+    document.getElementById('confirmFinishBtn').onclick = confirmStartBinding;
+}
+
+function confirmStartBinding() {
+    const operationId = this.dataset.operationId;
+    const bindersList = document.getElementById('bindersList');
+    
+    // Criar objeto de amarradores
+    const binders = {};
+    Array.from(bindersList.children).forEach(item => {
+        const employeeId = item.dataset.id;
+        const [name, agePart] = item.textContent.trim().split(' (');
+        const age = agePart ? parseInt(agePart) : 0;
+        binders[employeeId] = { name, age };
+    });
+
+    if (Object.keys(binders).length === 0) {
+        alert('Adicione pelo menos um amarrador!');
+        return;
+    }
+
+    const updates = {
+        status: 'binding',
+        binders,
+        bindingStartTime: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    db.ref(`operations/${operationId}`).update(updates)
+        .then(() => {
+            finishLoadingModal.style.display = 'none';
+        })
+        .catch(error => {
+            console.error('Erro ao iniciar enlonamento:', error);
+            alert('Erro ao iniciar enlonamento');
+        });
+}
+
+function getStatusLabel(status) {
+    const labels = {
+        'loading': 'Carregando',
+        'awaiting_binding': 'Aguardando Enlonamento',
+        'binding': 'Enlonamento',
+        'completed': 'Concluído'
+    };
+    
+    return labels[status] || status;
 }
 
 // Funções atualizadas para leitura de QR Code
@@ -438,54 +489,67 @@ function confirmStartLoading() {
 
 // Finalizar carregamento (iniciar amarração)
 function finishOperationLoading(operationId) {
-    const operation = currentOperations.find(op => op.id === operationId);
+    // Abrir modal para escanear QR Code do operador para confirmar finalização
+    startLoadingModal.style.display = 'flex';
     
-    if (!operation) {
-        alert('Operação não encontrada!');
-        return;
-    }
-
-    // Abrir modal para escanear QR Code dos amarradores
-    finishLoadingModal.style.display = 'flex';
-    document.getElementById('bindersList').innerHTML = '';
-    document.getElementById('confirmFinishBtn').disabled = true;
-    document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
+    // Configurar o modal para finalização
+    document.querySelector('#startLoadingModal h2').textContent = 'Finalizar Carregamento';
+    document.getElementById('confirmLoadingBtn').textContent = 'Confirmar Finalização';
+    document.getElementById('confirmLoadingBtn').dataset.operationId = operationId;
+    document.getElementById('confirmLoadingBtn').onclick = confirmFinishLoading;
+    
+    // Esconder campos não necessários para finalização
+    document.getElementById('dtNumber').style.display = 'none';
+    document.getElementById('vehicleType').style.display = 'none';
+    document.getElementById('dockNumber').style.display = 'none';
+    
+    // Resetar o operador
+    document.getElementById('operatorName').textContent = '';
+    document.getElementById('operatorInfo').style.display = 'none';
 }
 
 // Confirmar finalização de amarração (atualizado para Realtime Database)
 function confirmFinishLoading() {
     const operationId = this.dataset.operationId;
-    const bindersList = document.getElementById('bindersList');
-    
-    // Criar objeto de amarradores com IDs como chaves
-    const binders = {};
-    Array.from(bindersList.children).forEach(item => {
-        const employeeId = item.dataset.id;
-        const [name, agePart] = item.textContent.trim().split(' (');
-        const age = agePart ? parseInt(agePart) : 0;
-        binders[employeeId] = { name, age };
-    });
+    const operatorName = document.getElementById('operatorName').textContent;
 
-    if (Object.keys(binders).length === 0) {
-        alert('Adicione pelo menos um amarrador!');
+    if (!operatorName) {
+        alert('Por favor, escaneie o QR Code do operador para confirmar!');
         return;
     }
 
     const updates = {
-        status: 'binding',
-        binders,
+        status: 'awaiting_binding',
         loadingEndTime: firebase.database.ServerValue.TIMESTAMP,
-        bindingStartTime: firebase.database.ServerValue.TIMESTAMP
+        confirmedBy: operatorName,
+        confirmedAt: firebase.database.ServerValue.TIMESTAMP
     };
 
     db.ref(`operations/${operationId}`).update(updates)
         .then(() => {
-            finishLoadingModal.style.display = 'none';
+            startLoadingModal.style.display = 'none';
+            resetFinishLoadingForm();
         })
         .catch(error => {
-            console.error('Erro ao atualizar operação:', error);
+            console.error('Erro ao finalizar carregamento:', error);
             alert('Erro ao finalizar carregamento');
         });
+}
+
+function resetFinishLoadingForm() {
+    // Restaurar o modal ao estado original
+    document.querySelector('#startLoadingModal h2').textContent = 'Iniciar Carregamento';
+    document.getElementById('confirmLoadingBtn').textContent = 'Iniciar Carregamento';
+    document.getElementById('confirmLoadingBtn').onclick = confirmStartLoading;
+    
+    // Mostrar campos novamente
+    document.getElementById('dtNumber').style.display = 'block';
+    document.getElementById('vehicleType').style.display = 'block';
+    document.getElementById('dockNumber').style.display = 'block';
+    
+    // Resetar operador
+    document.getElementById('operatorName').textContent = '';
+    document.getElementById('operatorInfo').style.display = 'none';
 }
 
 // Finalizar amarração completamente (atualizado para Realtime Database)

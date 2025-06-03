@@ -539,3 +539,7 @@ input:focus {
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     }
 }
+.operation-status.awaiting_binding {
+    background-color: #FFA500; /* Laranja para aguardando enlonamento */
+    color: white;
+}
