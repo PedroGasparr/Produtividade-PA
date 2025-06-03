@@ -1,3 +1,4 @@
+// dashboard.js
 // Inicialização do Firebase
 const db = firebase.database();
 
@@ -95,7 +96,10 @@ function setupEventListeners() {
         startLoadingModal.style.display = 'flex';
     });
     
-    finishLoadingBtn.addEventListener('click', () => finishLoadingModal.style.display = 'none');
+    finishLoadingBtn.addEventListener('click', () => {
+        // Não faz nada, pois a finalização é feita pelos cards individuais
+    });
+    
     document.getElementById('switchCameraBtn').addEventListener('click', switchCamera);
     document.getElementById('switchFinishCameraBtn').addEventListener('click', switchFinishCamera);
 
@@ -122,7 +126,6 @@ function setupEventListeners() {
         finishLoadingModal.style.display = 'none';
         stopAllScanners();
     });
-    document.getElementById('confirmFinishBtn').addEventListener('click', confirmFinishLoading);
 
     document.getElementById('cancelPauseBtn').addEventListener('click', () => pauseModal.style.display = 'none');
     document.getElementById('confirmPauseBtn').addEventListener('click', confirmPause);
@@ -181,6 +184,12 @@ function renderOperationCard(operation) {
                 <span class="operation-card-detail-label">Operador:</span>
                 <span>${operation.operatorName || 'N/A'}</span>
             </div>
+            ${operation.status === 'binding' ? `
+            <div class="operation-card-detail">
+                <span class="operation-card-detail-label">Amarradores:</span>
+                <span>${operation.binders ? Object.values(operation.binders).join(', ') : 'N/A'}</span>
+            </div>
+            ` : ''}
         </div>
         
         <div class="operation-card-actions">
@@ -191,6 +200,9 @@ function renderOperationCard(operation) {
             ` : ''}
             
             ${operation.status === 'awaiting_binding' ? `
+            <button class="btn small-btn primary-btn bind-operators-btn" data-id="${operation.id}">
+                <i class="fas fa-link"></i> Vincular Amarradores
+            </button>
             <button class="btn small-btn primary-btn start-binding-btn" data-id="${operation.id}">
                 <i class="fas fa-play"></i> Iniciar Enlonamento
             </button>
@@ -208,54 +220,28 @@ function renderOperationCard(operation) {
 
     // Adicionar event listeners para os botões
     if (operation.status === 'loading') {
-    card.querySelector('.finish-loading-btn').addEventListener('click', () => showFinishLoadingModal(operation.id));
+        card.querySelector('.finish-loading-btn').addEventListener('click', () => showFinishLoadingModal(operation.id));
     }
     
     if (operation.status === 'awaiting_binding') {
+        card.querySelector('.bind-operators-btn').addEventListener('click', () => showBindOperatorsModal(operation.id));
         card.querySelector('.start-binding-btn').addEventListener('click', () => startOperationBinding(operation.id));
     }
     
     if (operation.status === 'binding') {
-        card.querySelector('.finish-binding-btn').addEventListener('click', () => finishOperationBinding(operation.id));
+        card.querySelector('.finish-binding-btn').addEventListener('click', () => showFinishBindingModal(operation.id));
     }
 }
 
-function showFinishLoadingModal(operationId) {
-    // Resetar o formulário de finalização
-    resetFinishLoadingForm();
-    
-    // Configurar o modal de finalização
-    finishLoadingModal.style.display = 'flex';
-    document.querySelector('#finishLoadingModal h2').textContent = 'Finalizar Carregamento';
-    document.getElementById('confirmFinishBtn').textContent = 'Confirmar Finalização';
-    
-    // Configurar o botão de confirmação
-    const confirmBtn = document.getElementById('confirmFinishBtn');
-    confirmBtn.dataset.operationId = operationId;
-    confirmBtn.onclick = function() {
-        confirmFinishOperationLoading.call(this); // Garante que o 'this' seja o botão
-    };
-    
-    // Mostrar apenas os elementos necessários
-    document.getElementById('finishQrScannerContainer').style.display = 'block';
-    document.getElementById('finishQrScanner').style.display = 'block';
-    
-    // Iniciar o scanner
-    startFinishScanner();
-    
-    // Esconder elementos não necessários
-    document.getElementById('bindersList').style.display = 'none';
-}
-
-function startOperationBinding(operationId) {
+function showBindOperatorsModal(operationId) {
     resetFinishLoadingForm();
     finishLoadingModal.style.display = 'flex';
     
-    // Configurar o modal para enlonamento
-    document.querySelector('#finishLoadingModal h2').textContent = 'Iniciar Enlonamento';
-    document.getElementById('confirmFinishBtn').textContent = 'Iniciar Enlonamento';
+    // Configurar o modal para vincular amarradores
+    document.querySelector('#finishLoadingModal h2').textContent = 'Vincular Amarradores';
+    document.getElementById('confirmFinishBtn').textContent = 'Confirmar Amarradores';
     document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
-    document.getElementById('confirmFinishBtn').onclick = confirmStartBinding;
+    document.getElementById('confirmFinishBtn').onclick = confirmBindOperators;
     
     // Mostrar apenas o scanner e lista de amarradores
     document.getElementById('finishQrScannerContainer').style.display = 'block';
@@ -265,7 +251,7 @@ function startOperationBinding(operationId) {
     startFinishScanner();
 }
 
-function confirmStartBinding() {
+function confirmBindOperators() {
     const operationId = this.dataset.operationId;
     const bindersList = document.getElementById('bindersList');
     
@@ -282,15 +268,55 @@ function confirmStartBinding() {
     }
 
     const updates = {
-        status: 'binding',
-        binders,
-        bindingStartTime: firebase.database.ServerValue.TIMESTAMP
+        binders: binders
     };
 
     db.ref(`operations/${operationId}`).update(updates)
         .then(() => {
             finishLoadingModal.style.display = 'none';
             stopAllScanners();
+            alert('Amarradores vinculados com sucesso!');
+        })
+        .catch(error => {
+            console.error('Erro ao vincular amarradores:', error);
+            alert('Erro ao vincular amarradores');
+        });
+}
+
+function showFinishLoadingModal(operationId) {
+    resetFinishLoadingForm();
+    finishLoadingModal.style.display = 'flex';
+    
+    // Configurar o modal de finalização
+    document.querySelector('#finishLoadingModal h2').textContent = 'Finalizar Carregamento';
+    document.getElementById('confirmFinishBtn').textContent = 'Confirmar Finalização';
+    document.getElementById('confirmFinishBtn').dataset.operationId = operationId;
+    document.getElementById('confirmFinishBtn').onclick = confirmFinishOperationLoading;
+    
+    // Mostrar apenas o scanner
+    document.getElementById('finishQrScannerContainer').style.display = 'block';
+    document.getElementById('finishQrScanner').style.display = 'block';
+    document.getElementById('bindersList').style.display = 'none';
+    
+    startFinishScanner();
+}
+
+function startOperationBinding(operationId) {
+    const operation = currentOperations.find(op => op.id === operationId);
+    
+    if (!operation || !operation.binders || Object.keys(operation.binders).length === 0) {
+        alert('Por favor, vincule pelo menos um amarrador antes de iniciar o enlonamento!');
+        return;
+    }
+
+    const updates = {
+        status: 'binding',
+        bindingStartTime: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    db.ref(`operations/${operationId}`).update(updates)
+        .then(() => {
+            alert('Enlonamento iniciado com sucesso!');
         })
         .catch(error => {
             console.error('Erro ao iniciar enlonamento:', error);
@@ -298,7 +324,7 @@ function confirmStartBinding() {
         });
 }
 
-function finishOperationBinding(operationId) {
+function showFinishBindingModal(operationId) {
     resetFinishLoadingForm();
     finishLoadingModal.style.display = 'flex';
     
@@ -337,6 +363,7 @@ function confirmFinishOperationBinding() {
             finishLoadingModal.style.display = 'none';
             stopAllScanners();
             saveOperationHistory(operationId);
+            alert('Enlonamento finalizado com sucesso!');
         })
         .catch(error => {
             console.error('Erro ao finalizar enlonamento:', error);
@@ -364,6 +391,7 @@ function confirmFinishOperationLoading() {
         .then(() => {
             finishLoadingModal.style.display = 'none';
             stopAllScanners();
+            alert('Carregamento finalizado com sucesso! Aguardando enlonamento.');
         })
         .catch(error => {
             console.error('Erro ao finalizar carregamento:', error);
@@ -538,9 +566,6 @@ function handleQrScan(result, type) {
                 document.getElementById('operatorInfo').textContent = `Operador: ${employeeData.nome}`;
                 document.getElementById('operatorInfo').style.display = 'block';
                 
-                // Parar o scanner após leitura bem-sucedida
-                stopAllScanners();
-                
                 // Habilita o botão de confirmação
                 document.getElementById('confirmLoadingBtn').disabled = false;
                 
@@ -700,7 +725,14 @@ function saveOperationHistory(operationId) {
         completedBy: currentUser.uid
     };
 
-    db.ref('history').push(historyData);
+    db.ref('history').push(historyData)
+        .then(() => {
+            // Remover a operação do banco de dados principal
+            db.ref(`operations/${operationId}`).remove();
+        })
+        .catch(error => {
+            console.error('Erro ao salvar histórico:', error);
+        });
 }
 
 function showPauseModal() {
@@ -809,6 +841,7 @@ function resetFinishLoadingForm() {
     document.getElementById('operatorInfo').style.display = 'none';
     document.getElementById('confirmFinishBtn').disabled = true;
     document.getElementById('bindersList').innerHTML = '';
+    document.getElementById('bindersFeedback').style.display = 'none';
     document.querySelector('#finishLoadingModal h2').textContent = 'Finalizar Amarração';
     document.getElementById('confirmFinishBtn').textContent = 'Finalizar Amarração';
     document.getElementById('finishQrScannerContainer').style.display = 'none';
