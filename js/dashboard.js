@@ -526,69 +526,128 @@ function stopAllScanners() {
 function handleQrScan(result, type) {
     // Verificar se o resultado é válido
     if (!result || typeof result !== 'string') {
-        alert('QR Code inválido ou vazio!');
+        showScanFeedback('QR Code inválido ou vazio!', 'error');
         return;
     }
 
     const qrCodeRegex = /^GZL-EO-\d{5}$/;
     if (!qrCodeRegex.test(result)) {
-        alert('QR Code inválido! O formato deve ser GZL-EO-XXXXX (onde X são números)');
+        showScanFeedback('QR Code inválido! O formato deve ser GZL-EO-XXXXX', 'error');
         return;
     }
 
-    const employeeId = result.split('-')[2];
-    
-    // Mostrar feedback visual de que o QR foi lido
-    const feedbackElement = type === 'operator' 
-        ? document.getElementById('operatorInfo')
-        : document.getElementById('bindersFeedback');
-    
-    feedbackElement.textContent = 'Processando QR Code...';
-    feedbackElement.style.display = 'block';
+    showScanFeedback('Processando QR Code...', 'processing');
 
-    db.ref(`funcionarios`).orderByChild('codigo').equalTo(result).once('value')
+    // Consulta otimizada no Firebase
+    db.ref('funcionarios').orderByChild('codigo').equalTo(result).once('value')
         .then(snapshot => {
             if (!snapshot.exists()) {
                 throw new Error('Funcionário não encontrado!');
             }
 
             let employeeData = null;
+            let employeeId = null;
+            
+            // Percorre os resultados (deve haver apenas 1)
             snapshot.forEach(child => {
                 employeeData = child.val();
+                employeeId = child.key;
+                return true; // Para após o primeiro resultado
             });
 
             if (!employeeData) {
                 throw new Error('Dados do funcionário não encontrados!');
             }
-            
+
             if (type === 'operator') {
-                document.getElementById('operatorName').textContent = employeeData.nome;
-                document.getElementById('operatorInfo').textContent = `Operador: ${employeeData.nome}`;
-                document.getElementById('operatorInfo').style.display = 'block';
-                
-                // Habilita o botão de confirmação
-                document.getElementById('confirmLoadingBtn').disabled = false;
-                
-                // Fechar a câmera imediatamente
-                document.getElementById('qrScanner').style.display = 'none';
-                if (qrScanner) {
-                    qrScanner.stop();
-                }
+                updateOperatorInfo(employeeData);
             } else if (type === 'binder') {
                 addBinderToList(employeeData, employeeId);
             }
         })
         .catch(error => {
             console.error('Erro ao buscar funcionário:', error);
-            feedbackElement.textContent = 'Erro: ' + error.message;
-            setTimeout(() => {
-                feedbackElement.style.display = 'none';
-            }, 3000);
+            showScanFeedback('Erro: ' + error.message, 'error');
         });
 }
 
-function addBinderToList(employee, employeeId) {
+function updateOperatorInfo(employeeData) {
+    const operatorNameElement = document.getElementById('operatorName');
+    const operatorInfoElement = document.getElementById('operatorInfo');
+    
+    if (operatorNameElement && operatorInfoElement) {
+        operatorNameElement.textContent = employeeData.nome;
+        operatorInfoElement.textContent = `Operador: ${employeeData.nome}`;
+        operatorInfoElement.style.display = 'block';
+        
+        // Habilita o botão de confirmação
+        const confirmBtn = document.getElementById('confirmLoadingBtn');
+        if (confirmBtn) confirmBtn.disabled = false;
+        
+        showScanFeedback(`Operador ${employeeData.nome} identificado!`, 'success');
+        
+        // Fechar a câmera
+        stopScanner();
+    }
+}
+
+function stopScanner() {
+    const qrScannerElement = document.getElementById('qrScanner');
+    if (qrScannerElement) qrScannerElement.style.display = 'none';
+    
+    if (qrScanner) {
+        qrScanner.stop().catch(e => console.error('Erro ao parar scanner:', e));
+    }
+}
+
+// Função auxiliar para mostrar feedback
+function showScanFeedback(message, type = 'info') {
+    const feedbackElement = document.getElementById('scanFeedback');
+    if (!feedbackElement) return;
+
+    // Configura cores baseadas no tipo
+    const styles = {
+        error: {
+            color: '#721c24',
+            backgroundColor: '#f8d7da',
+            borderColor: '#f5c6cb'
+        },
+        success: {
+            color: '#155724',
+            backgroundColor: '#d4edda',
+            borderColor: '#c3e6cb'
+        },
+        info: {
+            color: '#0c5460',
+            backgroundColor: '#d1ecf1',
+            borderColor: '#bee5eb'
+        },
+        processing: {
+            color: '#004085',
+            backgroundColor: '#cce5ff',
+            borderColor: '#b8daff'
+        }
+    };
+
+    feedbackElement.textContent = message;
+    feedbackElement.style.display = 'block';
+    
+    // Aplica estilos
+    Object.assign(feedbackElement.style, styles[type] || styles.info);
+
+    // Esconde após 3 segundos (exceto para sucesso)
+    if (type !== 'success') {
+        setTimeout(() => {
+            feedbackElement.style.display = 'none';
+        }, 3000);
+    }
+}
+
+function addBinderToList(employeeData, employeeId) {
     const bindersList = document.getElementById('bindersList');
+    if (!bindersList) return;
+
+    // Verifica se o amarrador já foi adicionado
     const existing = Array.from(bindersList.children).some(item => 
         item.dataset.id === employeeId
     );
@@ -598,7 +657,7 @@ function addBinderToList(employee, employeeId) {
         binderItem.className = 'binder-item';
         binderItem.dataset.id = employeeId;
         binderItem.innerHTML = `
-            <span>${employee.nome} (${employee.funcao})</span>
+            <span>${employeeData.nome} (${employeeData.cargo})</span>
             <button class="btn small-btn danger-btn remove-binder-btn">
                 <i class="fas fa-times"></i>
             </button>
@@ -606,6 +665,7 @@ function addBinderToList(employee, employeeId) {
         
         bindersList.appendChild(binderItem);
         
+        // Adiciona evento para remover
         binderItem.querySelector('.remove-binder-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             binderItem.remove();
@@ -613,17 +673,18 @@ function addBinderToList(employee, employeeId) {
         });
         
         checkBindersList();
+        showScanFeedback(`${employeeData.nome} adicionado como amarrador!`, 'success');
     } else {
-        const feedback = document.getElementById('bindersFeedback');
-        feedback.textContent = `${employee.nome} já foi adicionado!`;
-        feedback.style.display = 'block';
-        setTimeout(() => feedback.style.display = 'none', 2000);
+        showScanFeedback(`${employeeData.nome} já está na lista!`, 'info');
     }
 }
 
 function checkBindersList() {
     const bindersList = document.getElementById('bindersList');
     const confirmBtn = document.getElementById('confirmFinishBtn');
+    
+    if (!bindersList || !confirmBtn) return;
+    
     confirmBtn.disabled = bindersList.children.length === 0;
 }
 
