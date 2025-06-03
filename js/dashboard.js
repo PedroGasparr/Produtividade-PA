@@ -174,7 +174,9 @@ function startScanner() {
     elements.qrScanner.style.display = 'block';
     qrScanner = new Instascan.Scanner({
         video: elements.qrScanner,
-        mirror: false
+        mirror: false,
+        scanPeriod: 1,
+        backgroundScan: false
     });
     
     qrScanner.addListener('scan', content => {
@@ -184,15 +186,41 @@ function startScanner() {
     Instascan.Camera.getCameras()
         .then(cameraList => {
             cameras = cameraList;
-            if (cameras.length > 0) {
-                return qrScanner.start(cameras[currentCameraIndex]);
+            if (cameras.length === 0) {
+                throw new Error('Nenhuma câmera encontrada');
             }
-            throw new Error('Nenhuma câmera encontrada');
+            
+            // Encontrar a câmera traseira
+            const rearCamera = cameras.find(camera => camera.name.toLowerCase().includes('traseira') || 
+                camera.name.toLowerCase().includes('rear') || 
+                !camera.name.toLowerCase().includes('frente') && 
+                !camera.name.toLowerCase().includes('front'));
+            
+            // Usar a câmera traseira se encontrada, caso contrário usar a primeira câmera
+            const selectedCamera = rearCamera || cameras[0];
+            
+            // Forçar câmera traseira em dispositivos móveis
+            if (isMobileDevice()) {
+                if (cameras.length > 1) {
+                    // Geralmente a câmera traseira é a última na lista
+                    selectedCamera = cameras[cameras.length - 1];
+                }
+            }
+            
+            return qrScanner.start(selectedCamera);
+        })
+        .then(() => {
+            showFeedback('Scanner iniciado com sucesso', 'success', 'scanFeedback');
         })
         .catch(error => {
             console.error('Erro ao iniciar scanner:', error);
             showFeedback('Erro ao acessar câmera: ' + error.message, 'error', 'scanFeedback');
         });
+}
+
+
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
 function startFinishScanner() {
@@ -201,7 +229,9 @@ function startFinishScanner() {
     elements.finishQrScanner.style.display = 'block';
     finishQrScanner = new Instascan.Scanner({
         video: elements.finishQrScanner,
-        mirror: false
+        mirror: false,
+        scanPeriod: 1,
+        backgroundScan: false
     });
     
     finishQrScanner.addListener('scan', content => {
@@ -210,10 +240,28 @@ function startFinishScanner() {
     
     Instascan.Camera.getCameras()
         .then(cameraList => {
-            if (cameraList.length > 0) {
-                return finishQrScanner.start(cameraList[currentCameraIndex]);
+            if (cameraList.length === 0) {
+                throw new Error('Nenhuma câmera encontrada');
             }
-            throw new Error('Nenhuma câmera encontrada');
+            
+            // Mesma lógica para encontrar câmera traseira
+            const rearCamera = cameraList.find(camera => camera.name.toLowerCase().includes('traseira') || 
+                camera.name.toLowerCase().includes('rear') || 
+                !camera.name.toLowerCase().includes('frente') && 
+                !camera.name.toLowerCase().includes('front'));
+            
+            let selectedCamera = rearCamera || cameraList[0];
+            
+            if (isMobileDevice()) {
+                if (cameraList.length > 1) {
+                    selectedCamera = cameraList[cameraList.length - 1];
+                }
+            }
+            
+            return finishQrScanner.start(selectedCamera);
+        })
+        .then(() => {
+            showFeedback('Scanner iniciado com sucesso', 'success', 'finishScanFeedback');
         })
         .catch(error => {
             console.error('Erro ao iniciar scanner:', error);
