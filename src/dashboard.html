@@ -80,7 +80,7 @@
         <nav class="sidebar">
             <div class="sidebar-header">
                 <img src="../img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo PA" class="sidebar-logo">
-                <h2>Sistema PA (2.88)</h2>
+                <h2>Sistema PA (2.99)</h2>
             </div>
             <ul class="sidebar-menu">
                 <li class="active"><a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
@@ -146,6 +146,11 @@
                         </button>
                     </div>
 
+                    <div id="operatorInfo" style="display: none;">
+                    Operador: <span id="operatorName"></span>
+                    </div>
+                    <div id="scanFeedback" class="feedback-message"></div>
+
                     <div class="manual-input-container" id="manualInputContainer">
                         <input type="text" id="manualCodeInput" placeholder="Digite o código GZL-EO-XXXXX">
                         <button class="btn primary-btn" id="confirmManualInputBtn" style="margin-top: 10px;">
@@ -206,6 +211,9 @@
                         <button class="active" id="toggleFinishQrScan">Ler QR Code</button>
                         <button id="toggleFinishManualInput">Digitar Código</button>
                     </div>
+
+                    <div id="bindersFeedback" class="feedback-message"></div>
+                    <div id="bindersList" class="binders-list"></div>
                     
                     <div class="qr-scanner-container">
                         <video id="finishQrScanner" width="100%" playsinline></video>

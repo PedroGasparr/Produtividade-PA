@@ -27,7 +27,16 @@ let operationsListener = null;
 
 // Inicialização do dashboard
 document.addEventListener('DOMContentLoaded', () => {
-    // Verificar autenticação
+     const criticalElements = [
+        'operatorName', 'operatorInfo', 'scanFeedback',
+        'bindersFeedback', 'bindersList', 'confirmLoadingBtn'
+    ];
+
+    criticalElements.forEach(id => {
+        if (!document.getElementById(id)) {
+            console.error(`Elemento crítico não encontrado: #${id}`);
+        }
+    });
     firebase.auth().onAuthStateChanged(user => {
         if (!user) {
             window.location.href = 'index.html';
@@ -67,6 +76,14 @@ function initializeOperations() {
         // Iniciar atualização contínua dos tempos
         startTimeUpdates();
     });
+}
+function getElementSafe(id, context = '') {
+    const el = document.getElementById(id);
+    if (!el) {
+        console.error(`Elemento não encontrado: #${id}`, context);
+        return document.createElement('div'); // Retorna elemento vazio como fallback
+    }
+    return el;
 }
 
 let timeUpdateInterval = null;
@@ -344,7 +361,7 @@ function showFinishBindingModal(operationId) {
 
 function confirmFinishOperationBinding() {
     const operationId = this.dataset.operationId;
-    const operatorName = document.getElementById('operatorName').textContent;
+    const operatorName = getElementSafe('operatorName', 'handleOperatorScan').textContent;
 
     if (!operatorName) {
         alert('Por favor, escaneie o QR Code do operador para confirmar!');
@@ -373,7 +390,7 @@ function confirmFinishOperationBinding() {
 
 function confirmFinishOperationLoading() {
     const operationId = this.dataset.operationId;
-    const operatorName = document.getElementById('operatorName').textContent;
+    const operatorName = getElementSafe('operatorName', 'handleOperatorScan').textContent;
 
     if (!operatorName) {
         alert('Por favor, escaneie o QR Code do operador para confirmar!');
@@ -524,55 +541,148 @@ function stopAllScanners() {
 }
 
 function handleQrScan(result, type) {
-    // Verificar se o resultado é válido
+    // 1. Verificação robusta do input
     if (!result || typeof result !== 'string') {
-        showScanFeedback('QR Code inválido ou vazio!', 'error');
-        return;
+        return showFeedback('QR Code inválido: conteúdo vazio ou não-texto', 'error', type);
     }
 
+    // 2. Validação do formato
     const qrCodeRegex = /^GZL-EO-\d{5}$/;
     if (!qrCodeRegex.test(result)) {
-        showScanFeedback('QR Code inválido! O formato deve ser GZL-EO-XXXXX', 'error');
-        return;
+        return showFeedback(`Formato inválido! Use: GZL-EO-XXXXX`, 'error', type);
     }
 
-    showScanFeedback('Processando QR Code...', 'processing');
+    // 3. Feedback visual
+    showFeedback('Validando QR Code...', 'processing', type);
 
-    // Consulta otimizada no Firebase
+    // 4. Consulta ao Firebase com tratamento de erros
     db.ref('funcionarios').orderByChild('codigo').equalTo(result).once('value')
         .then(snapshot => {
             if (!snapshot.exists()) {
-                throw new Error('Funcionário não encontrado!');
+                throw new Error('Funcionário não encontrado no banco de dados');
             }
 
+            // 5. Processamento dos dados
             let employeeData = null;
-            let employeeId = null;
-            
-            // Percorre os resultados (deve haver apenas 1)
             snapshot.forEach(child => {
                 employeeData = child.val();
-                employeeId = child.key;
-                return true; // Para após o primeiro resultado
+                return true; // Encerra após o primeiro resultado
             });
 
             if (!employeeData) {
-                throw new Error('Dados do funcionário não encontrados!');
+                throw new Error('Dados do funcionário inválidos');
             }
 
+            // 6. Ação baseada no tipo (operator/binder)
             if (type === 'operator') {
-                updateOperatorInfo(employeeData);
-            } else if (type === 'binder') {
-                addBinderToList(employeeData, employeeId);
+                handleOperatorScan(employeeData);
+            } else {
+                handleBinderScan(employeeData, child.key);
             }
         })
         .catch(error => {
-            console.error('Erro ao buscar funcionário:', error);
-            showScanFeedback('Erro: ' + error.message, 'error');
+            console.error('Erro na consulta:', error);
+            showFeedback(`Erro: ${error.message}`, 'error', type);
         });
 }
 
+function handleOperatorScan(employeeData) {
+    const elements = {
+        name: getElementSafe('operatorName', 'handleOperatorScan'),
+        info: document.getElementById('operatorInfo'),
+        feedback: document.getElementById('scanFeedback'),
+        confirmBtn: document.getElementById('confirmLoadingBtn')
+    };
+
+    // Verifica TODOS os elementos necessários
+    if (!elements.name || !elements.info || !elements.feedback || !elements.confirmBtn) {
+        console.error('Elementos do DOM não encontrados! Verifique seus IDs:');
+        console.table(elements);
+        return showFeedback('Erro interno: elementos faltando', 'error', 'operator');
+    }
+
+    // Atualiza a interface
+    elements.name.textContent = employeeData.nome;
+    elements.info.innerHTML = `Operador: <strong>${employeeData.nome}</strong>`;
+    elements.info.style.display = 'block';
+    elements.confirmBtn.disabled = false;
+
+    showFeedback(`Operador ${employeeData.nome} identificado!`, 'success', 'operator');
+    stopScanner();
+}
+
+function handleBinderScan(employeeData, employeeId) {
+    const bindersList = document.getElementById('bindersList');
+    if (!bindersList) {
+        return showFeedback('Elemento bindersList não encontrado', 'error', 'binder');
+    }
+
+    // Verifica se já foi adicionado
+    if (Array.from(bindersList.children).some(item => item.dataset.id === employeeId)) {
+        return showFeedback(`${employeeData.nome} já está na lista`, 'info', 'binder');
+    }
+
+    // Adiciona novo amarrador
+    const binderItem = document.createElement('div');
+    binderItem.className = 'binder-item';
+    binderItem.dataset.id = employeeId;
+    binderItem.innerHTML = `
+        <span>${employeeData.nome} (${employeeData.cargo})</span>
+        <button class="btn small-btn danger-btn remove-binder-btn">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+
+    // Adiciona evento de remoção
+    binderItem.querySelector('.remove-binder-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        binderItem.remove();
+        checkBindersList();
+    });
+
+    bindersList.appendChild(binderItem);
+    checkBindersList();
+    showFeedback(`${employeeData.nome} adicionado como amarrador`, 'success', 'binder');
+}
+
+function showFeedback(message, type = 'info', context = 'operator') {
+    const elementId = context === 'operator' ? 'scanFeedback' : 'bindersFeedback';
+    const feedbackElement = document.getElementById(elementId);
+    
+    if (!feedbackElement) {
+        console.error(`Elemento de feedback não encontrado: ${elementId}`);
+        return;
+    }
+
+    // Configuração de estilos
+    const styles = {
+        error: { background: '#ffebee', color: '#c62828', border: '1px solid #ef9a9a' },
+        success: { background: '#e8f5e9', color: '#2e7d32', border: '1px solid #a5d6a7' },
+        processing: { background: '#e3f2fd', color: '#1565c0', border: '1px solid #90caf9' },
+        info: { background: '#fff8e1', color: '#f57f17', border: '1px solid #ffe082' }
+    };
+
+    // Aplica estilos
+    Object.assign(feedbackElement.style, {
+        display: 'block',
+        padding: '10px',
+        margin: '10px 0',
+        borderRadius: '4px',
+        ...styles[type] || styles.info
+    });
+
+    feedbackElement.textContent = message;
+
+    // Auto-esconde após 5 segundos (exceto sucesso)
+    if (type !== 'success') {
+        setTimeout(() => {
+            feedbackElement.style.display = 'none';
+        }, 5000);
+    }
+}
+
 function updateOperatorInfo(employeeData) {
-    const operatorNameElement = document.getElementById('operatorName');
+    const operatorNameElement = getElementSafe('operatorName', 'handleOperatorScan');
     const operatorInfoElement = document.getElementById('operatorInfo');
     
     if (operatorNameElement && operatorInfoElement) {
@@ -696,7 +806,7 @@ function confirmStartLoading() {
     const dtNumber = document.getElementById('dtNumber').value.trim();
     const vehicleType = document.getElementById('vehicleType').value.trim();
     const dockNumber = document.getElementById('dockNumber').value.trim();
-    const operatorName = document.getElementById('operatorName').textContent.trim();
+    const operatorName = getElementSafe('operatorName', 'handleOperatorScan').textContent.trim();
 
     // Validação dos campos
     if (!dtNumber || !vehicleType || !dockNumber || !operatorName) {
@@ -884,7 +994,7 @@ function resetStartLoadingForm() {
     document.getElementById('dtNumber').value = '';
     document.getElementById('vehicleType').value = 'Caminhão';
     document.getElementById('dockNumber').value = '1';
-    document.getElementById('operatorName').textContent = '';
+    getElementSafe('operatorName', 'handleOperatorScan').textContent = '';
     document.getElementById('operatorInfo').style.display = 'none';
     document.getElementById('confirmLoadingBtn').disabled = true;
     document.getElementById('confirmLoadingBtn').onclick = confirmStartLoading;
@@ -898,7 +1008,7 @@ function resetStartLoadingForm() {
 }
 
 function resetFinishLoadingForm() {
-    document.getElementById('operatorName').textContent = '';
+    getElementSafe('operatorName', 'handleOperatorScan').textContent = '';
     document.getElementById('operatorInfo').style.display = 'none';
     document.getElementById('confirmFinishBtn').disabled = true;
     document.getElementById('bindersList').innerHTML = '';
