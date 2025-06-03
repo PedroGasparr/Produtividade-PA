@@ -61,7 +61,33 @@ function initializeOperations() {
 
         finishLoadingBtn.disabled = currentOperations.length === 0;
         pauseBtn.disabled = currentOperations.length === 0;
+        
+        // Iniciar atualização contínua dos tempos
+        startTimeUpdates();
     });
+}
+
+let timeUpdateInterval = null;
+
+function startTimeUpdates() {
+    // Limpar intervalo anterior se existir
+    if (timeUpdateInterval) {
+        clearInterval(timeUpdateInterval);
+    }
+    
+    // Atualizar tempos a cada segundo
+    timeUpdateInterval = setInterval(() => {
+        currentOperations.forEach(op => {
+            const card = document.querySelector(`.operation-card[data-id="${op.id}"]`);
+            if (card) {
+                const elapsedTime = calculateElapsedTime(op);
+                const timeElement = card.querySelector('.operation-card-time');
+                if (timeElement) {
+                    timeElement.textContent = formatTime(elapsedTime);
+                }
+            }
+        });
+    }, 1000);
 }
 
 function setupEventListeners() {
@@ -158,7 +184,7 @@ function renderOperationCard(operation) {
             <div class="operation-status ${operation.status}">${getStatusLabel(operation.status)}</div>
         </div>
         
-        <div class="operation-card-time">${formatTime(elapsedTime)}</div>
+        <div class="operation-card-time" data-id="${operation.id}-time">${formatTime(elapsedTime)}</div>
         
         <div class="operation-card-details">
             <div class="operation-card-detail">
@@ -258,11 +284,19 @@ function startFinishScanner() {
         handleQrScan(content, 'binder');
     });
     
-    if (cameras.length > 0) {
-        finishQrScanner.start(cameras[currentFinishCameraIndex]);
-    } else {
-        alert('Nenhuma câmera disponível!');
-    }
+    // Carregar câmeras primeiro, como no startScanner
+    Instascan.Camera.getCameras().then(function(cameraList) {
+        cameras = cameraList;
+        if (cameras.length > 0) {
+            currentFinishCameraIndex = 0; // Resetar para a primeira câmera
+            finishQrScanner.start(cameras[currentFinishCameraIndex]);
+        } else {
+            alert('Nenhuma câmera encontrada!');
+        }
+    }).catch(function(e) {
+        console.error(e);
+        alert('Erro ao acessar a câmera');
+    });
 }
 
 function stopAllScanners() {
@@ -273,6 +307,10 @@ function stopAllScanners() {
     if (finishQrScanner) {
         finishQrScanner.stop();
         document.getElementById('finishQrScanner').style.display = 'none';
+    }
+    if (timeUpdateInterval) {
+        clearInterval(timeUpdateInterval);
+        timeUpdateInterval = null;
     }
 }
 
