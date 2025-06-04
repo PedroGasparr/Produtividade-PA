@@ -326,12 +326,15 @@ function handleQrScan(content, type) {
             }
 
             let employeeData = null;
+            let employeeId = null;
             snapshot.forEach(child => {
                 employeeData = child.val();
+                employeeId = child.key;
                 return true;
             });
 
             if (type === 'operator') {
+                // Lógica para operador principal
                 elements.operatorName.textContent = employeeData.nome;
                 elements.operatorInfo.style.display = 'block';
                 elements.confirmLoadingBtn.disabled = false;
@@ -339,8 +342,10 @@ function handleQrScan(content, type) {
                 stopScanner();
             } else {
                 if (elements.finishModalTitle.textContent.includes('Vincular')) {
-                    addBinderToList(employeeData, snapshot.key);
+                    // Lógica para vincular amarradores
+                    addBinderToList(employeeData, employeeId);
                 } else {
+                    // Lógica para operador de finalização
                     elements.operatorFinishName.textContent = employeeData.nome;
                     elements.operatorFinishInfo.style.display = 'block';
                     elements.confirmFinishBtn.disabled = false;
@@ -356,7 +361,10 @@ function handleQrScan(content, type) {
 }
 
 function addBinderToList(employeeData, employeeId) {
-    if (Array.from(elements.bindersList.children).some(item => item.dataset.id === employeeId)) {
+    // Verifica se o funcionário já está na lista
+    const existingBinder = Array.from(elements.bindersList.children).find(item => item.dataset.id === employeeId);
+    
+    if (existingBinder) {
         showFeedback(`${employeeData.nome} já está na lista`, 'info', 'finishScanFeedback');
         return;
     }
@@ -365,11 +373,13 @@ function addBinderToList(employeeData, employeeId) {
     binderItem.className = 'binder-item';
     binderItem.dataset.id = employeeId;
     binderItem.innerHTML = `
-        <span>${employeeData.nome} (${employeeData.cargo})</span>
+        <span>${employeeData.nome} (${employeeData.cargo || 'Sem cargo especificado'})</span>
         <button class="btn remove-binder-btn"><i class="fas fa-times"></i></button>
     `;
     
-    binderItem.querySelector('.remove-binder-btn').addEventListener('click', () => {
+    // Adiciona evento para remover o amarrador
+    binderItem.querySelector('.remove-binder-btn').addEventListener('click', (e) => {
+        e.preventDefault();
         binderItem.remove();
         checkBindersList();
     });
@@ -522,9 +532,12 @@ function confirmFinishOperation(operationId, operationType) {
 
 function confirmBinders(operationId) {
     const binders = {};
+    
+    // Coleta todos os amarradores da lista
     Array.from(elements.bindersList.children).forEach(item => {
         const employeeId = item.dataset.id;
-        binders[employeeId] = item.textContent.trim().split(' (')[0];
+        const employeeName = item.querySelector('span').textContent.split(' (')[0];
+        binders[employeeId] = employeeName;
     });
 
     if (Object.keys(binders).length === 0) {
@@ -534,20 +547,25 @@ function confirmBinders(operationId) {
 
     elements.confirmFinishBtn.disabled = true;
 
-    db.ref(`operations/${operationId}`).update({ binders })
-        .then(() => {
-            showFeedback('Amarradores vinculados com sucesso!', 'success', 'finishScanFeedback');
-            setTimeout(() => {
-                elements.finishLoadingModal.style.display = 'none';
-            }, 1500);
-        })
-        .catch(error => {
-            console.error('Erro ao vincular amarradores:', error);
-            showFeedback('Erro ao vincular: ' + error.message, 'error', 'finishScanFeedback');
-        })
-        .finally(() => {
-            elements.confirmFinishBtn.disabled = false;
-        });
+    // Atualiza a operação no banco de dados
+    db.ref(`operations/${operationId}`).update({ 
+        binders: binders,
+        status: 'awaiting_binding' // Garante o status correto
+    })
+    .then(() => {
+        showFeedback('Amarradores vinculados com sucesso!', 'success', 'finishScanFeedback');
+        setTimeout(() => {
+            elements.finishLoadingModal.style.display = 'none';
+            resetFinishLoadingForm();
+        }, 1500);
+    })
+    .catch(error => {
+        console.error('Erro ao vincular amarradores:', error);
+        showFeedback('Erro ao vincular: ' + error.message, 'error', 'finishScanFeedback');
+    })
+    .finally(() => {
+        elements.confirmFinishBtn.disabled = false;
+    });
 }
 
 function saveOperationHistory(operationId) {
