@@ -7,7 +7,7 @@
         let docks = Array.from({length: 11}, (_, i) => ({number: i+1, status: 'free'}));
         
         // Constantes
-        const TIME_LIMIT = 60;
+        const TIME_LIMIT = 120;
         const DAILY_TARGET_TRUCKS = 30;
         const DAILY_TARGET_TONS = 1500;
         const MONTHLY_TARGET_TRUCKS = 600;

@@ -345,3 +345,22 @@
             width: 100%;
         }
     }
+     /* Adicionei estilo para a nova coluna */
+        .badge {
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .badge-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .badge-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .badge-warning {
+            background-color: #ffc107;
+            color: black;
+        }
