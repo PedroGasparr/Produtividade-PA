@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico de Operações</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .auth-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .auth-message {
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        
+        .auth-form {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .auth-form input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        
+        .auth-form button {
+            padding: 8px 15px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .filters {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: none; /* Inicialmente oculto */
+        }
+        
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .filter-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .filter-group select, .filter-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+            display: none; /* Inicialmente oculto */
+        }
+        
+        .stat-card {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card h3 {
+            margin-top: 0;
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4285f4;
+        }
+        
+        .ranking, .history {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: none; /* Inicialmente oculto */
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: 500;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .badge-primary {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .badge-success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .error {
+            color: #d32f2f;
+            padding: 10px;
+            background-color: #ffebee;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Histórico de Operações</h1>
+            <button id="logoutBtn" class="btn">Sair</button>
+        </div>
+        
+        <div class="auth-section">
+            <div class="auth-message">Acesso ao histórico restrito</div>
+            <div class="auth-form">
+                <input type="password" id="accessPassword" placeholder="Digite a senha de acesso">
+                <button id="authBtn">Acessar</button>
+            </div>
+            <div id="authError" class="error" style="display: none;"></div>
+        </div>
+        
+        <div class="filters">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="monthFilter">Mês</label>
+                    <select id="monthFilter">
+                        <option value="all">Todos os meses</option>
+                        <option value="1">Janeiro</option>
+                        <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Maio</option>
+                        <option value="6">Junho</option>
+                        <option value="7">Julho</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="yearFilter">Ano</label>
+                    <select id="yearFilter">
+                        <option value="2023">2023</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="employeeFilter">Funcionário (código)</label>
+                    <input type="text" id="employeeFilter" placeholder="GZL-EO-XXXXX">
+                </div>
+            </div>
+            
+            <div class="filter-row">
+                <button id="applyFilters" class="btn">Aplicar Filtros</button>
+                <button id="resetFilters" class="btn">Limpar Filtros</button>
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Total de Caminhões</h3>
+                <div class="value" id="totalTrucks">0</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Média de Carregamento</h3>
+                <div class="value" id="avgLoadingTime">00:00:00</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Média Tempo Livre</h3>
+                <div class="value" id="avgFreeTime">00:00:00</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Média Enlonamento</h3>
+                <div class="value" id="avgBindingTime">00:00:00</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Valor Total Pago</h3>
+                <div class="value" id="totalPayment">R$ 0,00</div>
+            </div>
+        </div>
+        
+        <div class="ranking">
+            <h2>Ranking de Funcionários</h2>
+            <div id="rankingLoading" class="loading">Carregando ranking...</div>
+            <table id="rankingTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Posição</th>
+                        <th>Nome</th>
+                        <th>Carregamentos</th>
+                        <th>Tempo Médio</th>
+                        <th>Valor Ganho</th>
+                    </tr>
+                </thead>
+                <tbody id="rankingBody"></tbody>
+            </table>
+        </div>
+        
+        <div class="history">
+            <h2>Histórico Completo</h2>
+            <div id="historyLoading" class="loading">Carregando histórico...</div>
+            <table id="historyTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>DT</th>
+                        <th>Operador</th>
+                        <th>Amarradores</th>
+                        <th>Doca</th>
+                        <th>Tempo Total</th>
+                        <th>Detalhes</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="../js/app.js"></script>
+    
+    <script>
+        const db = firebase.database();
+        
+        // Elementos da página
+        const elements = {
+            authSection: document.querySelector('.auth-section'),
+            accessPassword: document.getElementById('accessPassword'),
+            authBtn: document.getElementById('authBtn'),
+            authError: document.getElementById('authError'),
+            
+            filters: document.querySelector('.filters'),
+            monthFilter: document.getElementById('monthFilter'),
+            yearFilter: document.getElementById('yearFilter'),
+            employeeFilter: document.getElementById('employeeFilter'),
+            applyFilters: document.getElementById('applyFilters'),
+            resetFilters: document.getElementById('resetFilters'),
+            
+            stats: document.querySelector('.stats'),
+            totalTrucks: document.getElementById('totalTrucks'),
+            avgLoadingTime: document.getElementById('avgLoadingTime'),
+            avgFreeTime: document.getElementById('avgFreeTime'),
+            avgBindingTime: document.getElementById('avgBindingTime'),
+            totalPayment: document.getElementById('totalPayment'),
+            
+            ranking: document.querySelector('.ranking'),
+            rankingLoading: document.getElementById('rankingLoading'),
+            rankingTable: document.getElementById('rankingTable'),
+            rankingBody: document.getElementById('rankingBody'),
+            
+            history: document.querySelector('.history'),
+            historyLoading: document.getElementById('historyLoading'),
+            historyTable: document.getElementById('historyTable'),
+            historyBody: document.getElementById('historyBody'),
+            
+            logoutBtn: document.getElementById('logoutBtn')
+        };
+        
+        // Variáveis globais
+        let authenticated = false;
+        let operationsHistory = [];
+        let currentFilters = {
+            month: 'all',
+            year: new Date().getFullYear().toString(),
+            employee: ''
+        };
+        
+        // Senha de acesso (em produção, use autenticação segura)
+        const ACCESS_PASSWORD = "senha123";
+        
+        // Event Listeners
+        elements.authBtn.addEventListener('click', authenticate);
+        elements.applyFilters.addEventListener('click', applyFilters);
+        elements.resetFilters.addEventListener('click', resetFilters);
+        elements.logoutBtn.addEventListener('click', logout);
+        
+        // Função de autenticação
+        function authenticate() {
+            const password = elements.accessPassword.value.trim();
+            
+            if (password === ACCESS_PASSWORD) {
+                authenticated = true;
+                elements.authSection.style.display = 'none';
+                elements.filters.style.display = 'block';
+                elements.stats.style.display = 'grid';
+                elements.ranking.style.display = 'block';
+                elements.history.style.display = 'block';
+                
+                // Carrega os dados
+                loadHistoryData();
+            } else {
+                elements.authError.textContent = "Senha incorreta. Tente novamente.";
+                elements.authError.style.display = 'block';
+            }
+        }
+        
+        // Carrega os dados do histórico
+        function loadHistoryData() {
+            elements.rankingTable.style.display = 'none';
+            elements.historyTable.style.display = 'none';
+            elements.rankingLoading.style.display = 'block';
+            elements.historyLoading.style.display = 'block';
+            
+            db.ref('history').once('value')
+                .then(snapshot => {
+                    operationsHistory = [];
+                    snapshot.forEach(childSnapshot => {
+                        const operation = childSnapshot.val();
+                        operation.id = childSnapshot.key;
+                        operationsHistory.push(operation);
+                    });
+                    
+                    // Processa os dados
+                    processHistoryData();
+                })
+                .catch(error => {
+                    console.error("Erro ao carregar histórico:", error);
+                    elements.rankingLoading.textContent = "Erro ao carregar dados.";
+                    elements.historyLoading.textContent = "Erro ao carregar dados.";
+                });
+        }
+        
+        // Aplica os filtros
+        function applyFilters() {
+            currentFilters = {
+                month: elements.monthFilter.value,
+                year: elements.yearFilter.value,
+                employee: elements.employeeFilter.value.trim()
+            };
+            
+            processHistoryData();
+        }
+        
+        // Reseta os filtros
+        function resetFilters() {
+            elements.monthFilter.value = 'all';
+            elements.yearFilter.value = new Date().getFullYear().toString();
+            elements.employeeFilter.value = '';
+            
+            applyFilters();
+        }
+        
+        // Processa os dados do histórico e atualiza a UI
+        function processHistoryData() {
+            // Filtra os dados
+            let filteredData = operationsHistory.filter(operation => {
+                const opDate = new Date(operation.completedAt);
+                const opMonth = opDate.getMonth() + 1; // getMonth() retorna 0-11
+                const opYear = opDate.getFullYear();
+                
+                // Aplica filtro de mês
+                if (currentFilters.month !== 'all' && opMonth.toString() !== currentFilters.month) {
+                    return false;
+                }
+                
+                // Aplica filtro de ano
+                if (opYear.toString() !== currentFilters.year) {
+                    return false;
+                }
+                
+                // Aplica filtro de funcionário
+                if (currentFilters.employee) {
+                    const employeeCode = currentFilters.employee.toUpperCase();
+                    const operatorMatch = operation.operator && operation.operator.includes(employeeCode);
+                    const bindersMatch = operation.binders && Object.values(operation.binders).some(b => b.includes(employeeCode));
+                    
+                    if (!operatorMatch && !bindersMatch) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+            
+            // Ordena por data (mais recente primeiro)
+            filteredData.sort((a, b) => b.completedAt - a.completedAt);
+            
+            // Calcula estatísticas
+            calculateStatistics(filteredData);
+            
+            // Gera ranking
+            generateRanking(filteredData);
+            
+            // Exibe histórico
+            displayHistory(filteredData);
+            
+            // Esconde loadings e mostra tabelas
+            elements.rankingLoading.style.display = 'none';
+            elements.historyLoading.style.display = 'none';
+            elements.rankingTable.style.display = 'table';
+            elements.historyTable.style.display = 'table';
+        }
+        
+        // Calcula as estatísticas
+        function calculateStatistics(data) {
+            const totalTrucks = data.length;
+            elements.totalTrucks.textContent = totalTrucks;
+            
+            if (totalTrucks === 0) {
+                elements.avgLoadingTime.textContent = "00:00:00";
+                elements.avgFreeTime.textContent = "00:00:00";
+                elements.avgBindingTime.textContent = "00:00:00";
+                elements.totalPayment.textContent = "R$ 0,00";
+                return;
+            }
+            
+            // Calcula tempos médios
+            let totalLoadingTime = 0;
+            let totalFreeTime = 0;
+            let totalBindingTime = 0;
+            
+            data.forEach(op => {
+                const loadingTime = (op.loadingEndTime - op.startTime) / 1000;
+                const freeTime = op.bindingStartTime ? (op.bindingStartTime - op.loadingEndTime) / 1000 : 0;
+                const bindingTime = op.bindingEndTime ? (op.bindingEndTime - op.bindingStartTime) / 1000 : 0;
+                
+                totalLoadingTime += loadingTime;
+                totalFreeTime += freeTime;
+                totalBindingTime += bindingTime;
+            });
+            
+            const avgLoading = totalLoadingTime / totalTrucks;
+            const avgFree = totalFreeTime / totalTrucks;
+            const avgBinding = totalBindingTime / totalTrucks;
+            
+            elements.avgLoadingTime.textContent = formatTime(avgLoading);
+            elements.avgFreeTime.textContent = formatTime(avgFree);
+            elements.avgBindingTime.textContent = formatTime(avgBinding);
+            
+            // Calcula valor total pago (R$ 2,50 por operação para cada funcionário envolvido)
+            const totalPayment = totalTrucks * 2.5 * 1.5; // 1 operador + em média 0.5 amarrador
+            elements.totalPayment.textContent = `R$ ${totalPayment.toFixed(2).replace('.', ',')}`;
+        }
+        
+        // Gera o ranking de funcionários
+        function generateRanking(data) {
+            const employees = {};
+            
+            // Processa cada operação para contabilizar os funcionários
+            data.forEach(op => {
+                // Operador principal
+                if (op.operator) {
+                    if (!employees[op.operator]) {
+                        employees[op.operator] = {
+                            name: op.operator.split(' (')[0],
+                            operations: 0,
+                            totalLoadingTime: 0,
+                            totalPayment: 0
+                        };
+                    }
+                    
+                    employees[op.operator].operations += 1;
+                    employees[op.operator].totalLoadingTime += (op.loadingEndTime - op.startTime) / 1000;
+                    employees[op.operator].totalPayment += 2.5; // R$ 2,50 por operação
+                }
+                
+                // Amarradores
+                if (op.binders) {
+                    Object.values(op.binders).forEach(binder => {
+                        if (!employees[binder]) {
+                            employees[binder] = {
+                                name: binder.split(' (')[0],
+                                operations: 0,
+                                totalLoadingTime: 0,
+                                totalPayment: 0
+                            };
+                        }
+                        
+                        employees[binder].operations += 1;
+                        employees[binder].totalLoadingTime += (op.bindingEndTime - op.bindingStartTime) / 1000;
+                        employees[binder].totalPayment += 2.5; // R$ 2,50 por operação
+                    });
+                }
+            });
+            
+            // Converte para array e ordena
+            const ranking = Object.values(employees).map(emp => ({
+                ...emp,
+                avgTime: emp.totalLoadingTime / emp.operations
+            }));
+            
+            ranking.sort((a, b) => b.operations - a.operations || a.avgTime - b.avgTime);
+            
+            // Exibe o ranking
+            elements.rankingBody.innerHTML = '';
+            
+            ranking.forEach((emp, index) => {
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${emp.name}</td>
+                    <td>${emp.operations}</td>
+                    <td>${formatTime(emp.avgTime)}</td>
+                    <td>R$ ${emp.totalPayment.toFixed(2).replace('.', ',')}</td>
+                `;
+                
+                elements.rankingBody.appendChild(row);
+            });
+        }
+        
+        // Exibe o histórico completo
+        function displayHistory(data) {
+            elements.historyBody.innerHTML = '';
+            
+            data.forEach(op => {
+                const row = document.createElement('tr');
+                const opDate = new Date(op.completedAt);
+                const formattedDate = opDate.toLocaleDateString('pt-BR');
+                const formattedTime = opDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                
+                // Calcula tempo total (carregamento + enlonamento)
+                const totalTime = op.bindingEndTime ? 
+                    (op.bindingEndTime - op.startTime) / 1000 : 
+                    (op.loadingEndTime - op.startTime) / 1000;
+                
+                // Formata amarradores
+                let bindersList = 'Nenhum';
+                if (op.binders && Object.keys(op.binders).length > 0) {
+                    bindersList = Object.values(op.binders).join(', ');
+                }
+                
+                row.innerHTML = `
+                    <td>${formattedDate} ${formattedTime}</td>
+                    <td>${op.dtNumber || 'N/A'}</td>
+                    <td>${op.operator || 'N/A'}</td>
+                    <td>${bindersList}</td>
+                    <td>${op.dock || 'N/A'}</td>
+                    <td>${formatTime(totalTime)}</td>
+                    <td><button class="btn btn-sm btn-primary" onclick="showOperationDetails('${op.id}')">Detalhes</button></td>
+                `;
+                
+                elements.historyBody.appendChild(row);
+            });
+        }
+        
+        // Função para exibir detalhes da operação (seria implementada em um modal)
+        function showOperationDetails(operationId) {
+            const operation = operationsHistory.find(op => op.id === operationId);
+            if (!operation) return;
+            
+            // Aqui você pode implementar um modal com os detalhes completos
+            alert(`Detalhes da operação ${operationId}\n\n` +
+                  `DT: ${operation.dtNumber || 'N/A'}\n` +
+                  `Doca: ${operation.dock || 'N/A'}\n` +
+                  `Operador: ${operation.operator || 'N/A'}\n` +
+                  `Amarradores: ${operation.binders ? Object.values(operation.binders).join(', ') : 'Nenhum'}\n` +
+                  `Início: ${new Date(operation.startTime).toLocaleString()}\n` +
+                  `Fim Carregamento: ${operation.loadingEndTime ? new Date(operation.loadingEndTime).toLocaleString() : 'N/A'}\n` +
+                  `Início Enlonamento: ${operation.bindingStartTime ? new Date(operation.bindingStartTime).toLocaleString() : 'N/A'}\n` +
+                  `Fim Enlonamento: ${operation.bindingEndTime ? new Date(operation.bindingEndTime).toLocaleString() : 'N/A'}\n` +
+                  `Tempo Total: ${formatTime((operation.bindingEndTime ? (operation.bindingEndTime - operation.startTime) : (operation.loadingEndTime - operation.startTime)) / 1000)}`);
+        }
+        
+        // Formata tempo (segundos para HH:MM:SS)
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "00:00:00";
+            
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        // Logout
+        function logout() {
+            authenticated = false;
+            elements.authSection.style.display = 'block';
+            elements.filters.style.display = 'none';
+            elements.stats.style.display = 'none';
+            elements.ranking.style.display = 'none';
+            elements.history.style.display = 'none';
+            elements.accessPassword.value = '';
+        }
+    </script>
+</body>
+</html>
