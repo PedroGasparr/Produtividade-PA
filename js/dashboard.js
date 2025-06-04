@@ -58,6 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeOperations() {
+    // Limpar qualquer intervalo existente
+    if (window.operationsInterval) {
+        clearInterval(window.operationsInterval);
+    }
+
     db.ref('operations').on('value', snapshot => {
         currentOperations = [];
         elements.operationsGrid.innerHTML = '';
@@ -71,6 +76,9 @@ function initializeOperations() {
         });
         
         elements.finishLoadingBtn.disabled = currentOperations.length === 0;
+
+        // Iniciar intervalo para atualizar os tempos
+        startOperationsTimer();
     });
 }
 
@@ -87,7 +95,7 @@ function renderOperationCard(operation) {
             <div class="operation-status ${operation.status}">${getStatusLabel(operation.status)}</div>
         </div>
         
-        <div class="operation-card-time">${formatTime(elapsedTime)}</div>
+        <div class="operation-card-time real-time">${formatTime(elapsedTime)}</div>
         
         <div class="operation-card-details">
             <div>DT: ${operation.dtNumber}</div>
@@ -112,6 +120,7 @@ function renderOperationCard(operation) {
 
     elements.operationsGrid.appendChild(card);
 
+    // Restante do código permanece o mesmo...
     // Adicionar event listeners para os botões
     if (operation.status === 'loading') {
         card.querySelector('.finish-loading-btn').addEventListener('click', () => showFinishLoadingModal(operation.id));
@@ -167,7 +176,24 @@ function setupEventListeners() {
     });
 }
 
-// Funções do Scanner
+function getRearCamera(cameras) {
+    // Primeiro tenta encontrar por nome (em português ou inglês)
+    const rearCamera = cameras.find(camera => 
+        camera.name.toLowerCase().includes('traseira') || 
+        camera.name.toLowerCase().includes('rear') ||
+        camera.name.toLowerCase().includes('back')
+    );
+    
+    // Se não encontrar por nome, tenta pela posição (em alguns dispositivos)
+    if (!rearCamera) {
+        return cameras.find(camera => camera.facing === 'environment') || 
+               cameras[cameras.length - 1]; // Última câmera geralmente é a traseira
+    }
+    
+    return rearCamera;
+}
+
+// Modificação na função startScanner
 function startScanner() {
     stopScanner();
     
@@ -190,22 +216,8 @@ function startScanner() {
                 throw new Error('Nenhuma câmera encontrada');
             }
             
-            // Encontrar a câmera traseira
-            const rearCamera = cameras.find(camera => camera.name.toLowerCase().includes('traseira') || 
-                camera.name.toLowerCase().includes('rear') || 
-                !camera.name.toLowerCase().includes('frente') && 
-                !camera.name.toLowerCase().includes('front'));
-            
-            // Usar a câmera traseira se encontrada, caso contrário usar a primeira câmera
-            const selectedCamera = rearCamera || cameras[0];
-            
-            // Forçar câmera traseira em dispositivos móveis
-            if (isMobileDevice()) {
-                if (cameras.length > 1) {
-                    // Geralmente a câmera traseira é a última na lista
-                    selectedCamera = cameras[cameras.length - 1];
-                }
-            }
+            // Sempre tentar usar a câmera traseira
+            const selectedCamera = getRearCamera(cameras);
             
             return qrScanner.start(selectedCamera);
         })
@@ -216,6 +228,30 @@ function startScanner() {
             console.error('Erro ao iniciar scanner:', error);
             showFeedback('Erro ao acessar câmera: ' + error.message, 'error', 'scanFeedback');
         });
+}
+
+function startOperationsTimer() {
+    // Limpar intervalo anterior se existir
+    if (window.operationsInterval) {
+        clearInterval(window.operationsInterval);
+    }
+
+    // Atualizar os tempos a cada segundo
+    window.operationsInterval = setInterval(() => {
+        const cards = document.querySelectorAll('.operation-card');
+        cards.forEach(card => {
+            const operationId = card.dataset.id;
+            const operation = currentOperations.find(op => op.id === operationId);
+            
+            if (operation) {
+                const elapsedTime = calculateElapsedTime(operation);
+                const timeElement = card.querySelector('.operation-card-time');
+                if (timeElement) {
+                    timeElement.textContent = formatTime(elapsedTime);
+                }
+            }
+        });
+    }, 1000); // Atualiza a cada segundo
 }
 
 
@@ -244,19 +280,8 @@ function startFinishScanner() {
                 throw new Error('Nenhuma câmera encontrada');
             }
             
-            // Mesma lógica para encontrar câmera traseira
-            const rearCamera = cameraList.find(camera => camera.name.toLowerCase().includes('traseira') || 
-                camera.name.toLowerCase().includes('rear') || 
-                !camera.name.toLowerCase().includes('frente') && 
-                !camera.name.toLowerCase().includes('front'));
-            
-            let selectedCamera = rearCamera || cameraList[0];
-            
-            if (isMobileDevice()) {
-                if (cameraList.length > 1) {
-                    selectedCamera = cameraList[cameraList.length - 1];
-                }
-            }
+            // Sempre tentar usar a câmera traseira
+            const selectedCamera = getRearCamera(cameraList);
             
             return finishQrScanner.start(selectedCamera);
         })
@@ -599,13 +624,13 @@ function calculateElapsedTime(operation) {
     
     const now = Date.now();
     const start = operation.startTime;
-    const end = operation.endTime || now;
+    const end = operation.status === 'completed' ? (operation.bindingEndTime || operation.loadingEndTime || now) : now;
     
     let pausedTime = 0;
     if (operation.pauses) {
         Object.values(operation.pauses).forEach(p => {
             const pauseStart = p.start || 0;
-            const pauseEnd = p.end || now;
+            const pauseEnd = p.end || (operation.status === 'paused' ? now : p.start || 0);
             pausedTime += pauseEnd - pauseStart;
         });
     }
