@@ -89,6 +89,14 @@ function renderOperationCard(operation) {
 
     const elapsedTime = calculateElapsedTime(operation);
     
+    // Corrigindo a exibição dos amarradores
+    let bindersDisplay = '';
+    if (operation.binders) {
+        // Pegamos apenas os valores (nomes) dos amarradores
+        const binderNames = Object.values(operation.binders);
+        bindersDisplay = `<div>Amarradores: ${binderNames.join(', ')}</div>`;
+    }
+    
     card.innerHTML = `
         <div class="operation-card-header">
             <div class="operation-card-title">Doca ${operation.dock}</div>
@@ -101,7 +109,7 @@ function renderOperationCard(operation) {
             <div>DT: ${operation.dtNumber}</div>
             <div>Veículo: ${operation.vehicleType}</div>
             <div>Operador: ${operation.operatorName}</div>
-            ${operation.binders ? `<div>Amarradores: ${Object.values(operation.binders).join(', ')}</div>` : ''}
+            ${bindersDisplay}
         </div>
         
         <div class="operation-card-actions">
@@ -362,7 +370,9 @@ function handleQrScan(content, type) {
 
 function addBinderToList(employeeData, employeeId) {
     // Verifica se o funcionário já está na lista
-    const existingBinder = Array.from(elements.bindersList.children).find(item => item.dataset.id === employeeId);
+    const existingBinder = Array.from(elements.bindersList.children).find(item => 
+        item.dataset.id === employeeId
+    );
     
     if (existingBinder) {
         showFeedback(`${employeeData.nome} já está na lista`, 'info', 'finishScanFeedback');
@@ -373,13 +383,11 @@ function addBinderToList(employeeData, employeeId) {
     binderItem.className = 'binder-item';
     binderItem.dataset.id = employeeId;
     binderItem.innerHTML = `
-        <span>${employeeData.nome} (${employeeData.cargo || 'Sem cargo especificado'})</span>
+        <span>${employeeData.nome} (${employeeData.cargo || 'Amarrador'})</span>
         <button class="btn remove-binder-btn"><i class="fas fa-times"></i></button>
     `;
     
-    // Adiciona evento para remover o amarrador
-    binderItem.querySelector('.remove-binder-btn').addEventListener('click', (e) => {
-        e.preventDefault();
+    binderItem.querySelector('.remove-binder-btn').addEventListener('click', () => {
         binderItem.remove();
         checkBindersList();
     });
@@ -536,8 +544,8 @@ function confirmBinders(operationId) {
     // Coleta todos os amarradores da lista
     Array.from(elements.bindersList.children).forEach(item => {
         const employeeId = item.dataset.id;
-        const employeeName = item.querySelector('span').textContent.split(' (')[0];
-        binders[employeeId] = employeeName;
+        const employeeName = item.textContent.trim().split(' (')[0];
+        binders[employeeId] = employeeName; // Salva como {id: nome}
     });
 
     if (Object.keys(binders).length === 0) {
@@ -550,10 +558,10 @@ function confirmBinders(operationId) {
     // Atualiza a operação no banco de dados
     db.ref(`operations/${operationId}`).update({ 
         binders: binders,
-        status: 'awaiting_binding' // Garante o status correto
+        status: 'awaiting_binding'
     })
     .then(() => {
-        showFeedback('Amarradores vinculados com sucesso!', 'success', 'finishScanFeedback');
+        showFeedback(`${Object.keys(binders).length} amarrador(es) vinculado(s) com sucesso!`, 'success', 'finishScanFeedback');
         setTimeout(() => {
             elements.finishLoadingModal.style.display = 'none';
             resetFinishLoadingForm();
