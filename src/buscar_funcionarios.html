@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro de Funcionários - Sistema PA</title>
+    <title>Buscar Funcionários - Sistema PA</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="../css/cadastrofuncionarios.css">
+    <link rel="stylesheet" href="../css/buscar_funcionarios.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -21,8 +20,8 @@
             </div>
             <ul class="sidebar-menu">
                 <li><a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                <li class="active"><a href="cadastro_colaborador.html"><i class="fas fa-users"></i> Cadastrar Funcionários</a></li>
-                <li><a href="buscar_funcionarios.html"><i class="fas fa-search"></i> Buscar Funcionários</a></li>
+                <li><a href="cadastro_colaborador.html"><i class="fas fa-users"></i> Cadastrar Funcionários</a></li>
+                <li class="active"><a href="buscar_funcionarios.html"><i class="fas fa-search"></i> Buscar Funcionários</a></li>
                 <li><a href="#"><i class="fa fa-tasks"></i> Painel De Controle</a></li>
                 <li><a href="#"><i class="fas fa-history"></i> Histórico</a></li>
                 <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
@@ -32,43 +31,37 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="main-header">
-                <h1>Cadastro de Funcionários</h1>
+                <h1>Buscar Funcionários</h1>
                 <div class="user-info">
                     <span id="currentUser">Usuário Logado</span>
                 </div>
             </header>
 
-            <!-- Formulário de Cadastro -->
-            <section class="cadastro-section">
-                <div class="form-container">
-                    <h2>Novo Funcionário</h2>
-                    <form id="funcionarioForm">
-                        <div class="form-group">
-                            <label for="nomeFuncionario">Nome Completo:</label>
-                            <input type="text" id="nomeFuncionario" required placeholder="Digite o nome do funcionário">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="cargoFuncionario">Cargo:</label>
-                            <select id="cargoFuncionario" required>
-                                <option value="">Selecione o cargo</option>
-                                <option value="Operador">Operador</option>
-                                <option value="Amarrador">Amarrador</option>
-                                <option value="Supervisor">Supervisor</option>
-                                <option value="Gerente">Gerente</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-actions">
-                            <button type="submit" class="btn primary-btn">
-                                <i class="fas fa-save"></i> Cadastrar Funcionário
-                            </button>
-                        </div>
-                    </form>
+            <!-- Barra de Busca -->
+            <section class="busca-section">
+                <div class="search-container">
+                    <h2>Buscar Funcionário</h2>
+                    <div class="search-group">
+                        <input type="text" id="searchInput" placeholder="Digite o nome do funcionário">
+                        <button id="searchBtn" class="btn primary-btn">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
+                    </div>
                 </div>
             </section>
 
-            <!-- QR Code Gerado -->
+            <!-- Resultados da Busca -->
+            <section class="resultados-section">
+                <div class="results-container">
+                    <h2>Resultados</h2>
+                    <div id="resultsList" class="results-list">
+                        <!-- Os resultados serão inseridos aqui via JavaScript -->
+                        <p class="empty-message">Nenhum funcionário encontrado. Faça uma busca acima.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- QR Code Gerado (mesmo componente da tela de cadastro) -->
             <section class="qr-section" id="qrSection" style="display: none;">
                 <div class="qr-container">
                     <h2>QR Code do Funcionário</h2>
@@ -89,6 +82,9 @@
                         <button class="btn primary-btn" id="downloadQrBtn">
                             <i class="fas fa-download"></i> Baixar QR Code
                         </button>
+                        <button class="btn danger-btn" id="deleteFuncBtn" style="margin-top: 10px;">
+                            <i class="fas fa-trash"></i> Excluir Funcionário
+                        </button>
                     </div>
                 </div>
             </section>
@@ -99,12 +95,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
     
     <!-- App Scripts -->
     <script src="../js/app.js"></script>
-    <script src="../js/cadastro_colaborador.js"></script>
-
+    <script src="../js/buscar_funcionarios.js"></script>
 </body>
 </html>
