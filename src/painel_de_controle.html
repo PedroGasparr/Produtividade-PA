@@ -39,6 +39,37 @@
                 <i class="fas fa-sync-alt"></i> Atualizar Dados
             </button>
 
+            <!-- Seção de Métricas de Tempo -->
+            <h2 class="section-title">Métricas de Tempo</h2>
+            <div class="time-metrics-container">
+                <div class="time-metric-card">
+                    <div class="metric-header">
+                        <i class="fas fa-truck-loading"></i>
+                        <h3>Tempo Médio de Carregamento</h3>
+                    </div>
+                    <div class="metric-value" id="avgLoadingTime">00:00:00</div>
+                    <div class="metric-description">Tempo desde o início até o fim do carregamento</div>
+                </div>
+                
+                <div class="time-metric-card">
+                    <div class="metric-header">
+                        <i class="fas fa-clock"></i>
+                        <h3>Tempo Médio de Espera</h3>
+                    </div>
+                    <div class="metric-value" id="avgFreeTime">00:00:00</div>
+                    <div class="metric-description">Tempo entre carregamento e início do enlonamento</div>
+                </div>
+                
+                <div class="time-metric-card">
+                    <div class="metric-header">
+                        <i class="fas fa-ribbon"></i>
+                        <h3>Tempo Médio de Enlonamento</h3>
+                    </div>
+                    <div class="metric-value" id="avgBindingTime">00:00:00</div>
+                    <div class="metric-description">Tempo desde o início até o fim do enlonamento</div>
+                </div>
+            </div>
+
             <!-- Status das Docas -->
             <h2 class="section-title">Status das Docas</h2>
             <div class="docks-container" id="docksContainer">
@@ -53,5 +84,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="../js/app.js"></script>
     <script src="../js/painel_de_controle.js"></script>
+    <script src="../js/tempos_painel.js"></script>
 </body>
 </html>
