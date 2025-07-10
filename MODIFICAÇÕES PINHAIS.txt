@@ -1,0 +1,12 @@
+incio 
+
+ler qr code do vistoria 
+
+dt 
+
+tipo de veiculo 
+
+doca de 1 até 15
+
+
+

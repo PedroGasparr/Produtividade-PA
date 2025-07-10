@@ -21,7 +21,6 @@
             min-height: 100vh;
         }
     
-        
         .main-content {
             flex: 1;
             padding: 20px;
@@ -46,9 +45,54 @@
             border-radius: 5px;
             width: 90%;
             max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         
-        /* Adicione seus outros estilos aqui */
+        .process-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .process-step {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        
+        .process-step.active {
+            background-color: #e3f2fd;
+            border-color: #2196f3;
+        }
+        
+        .process-step.completed {
+            background-color: #e8f5e9;
+            border-color: #4caf50;
+        }
+        
+        .timer {
+            font-family: monospace;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .operation-card {
+            position: relative;
+        }
+        
+        .operation-stage {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #2196f3;
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
     </style>
 </head>
 <body>
@@ -57,7 +101,7 @@
         <nav class="sidebar">
             <div class="sidebar-header">
                 <img src="../img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo PA" class="sidebar-logo">
-                <h2>Sistema PA</h2>
+                <h2>Sistema PA 1.0</h2>
             </div>
             <ul class="sidebar-menu">
                 <li class="active"><a href="dashboard.html"><i class="fas fa-home"></i> Início</a></li>
@@ -81,27 +125,24 @@
 
             <!-- Action Buttons -->
             <div class="action-buttons">
-                <button class="btn primary-btn" id="startLoadingBtn">
-                    <i class="fas fa-play"></i> Iniciar Carregamento
-                </button>
-                <button class="btn secondary-btn" id="finishLoadingBtn" disabled>
-                    <i class="fas fa-stop"></i> Finalizar Operação
+                <button class="btn primary-btn" id="startProcessBtn">
+                    <i class="fas fa-plus"></i> Iniciar Novo Processo
                 </button>
             </div>
 
             <!-- Current Operations -->
             <section class="operations-section">
-                <h2>Operações em Andamento</h2>
+                <h2>Processos em Andamento</h2>
                 <div class="operations-grid" id="operationsGrid">
                     <!-- Cards serão gerados dinamicamente aqui -->
                 </div>
             </section>
 
-            <!-- Modal Iniciar Carregamento -->
-            <div class="modal" id="startLoadingModal">
+            <!-- Modal Iniciar Processo -->
+            <div class="modal" id="startProcessModal">
                 <div class="modal-content">
                     <span class="close-modal">&times;</span>
-                    <h2>Iniciar Carregamento</h2>
+                    <h2>Iniciar Novo Processo</h2>
 
                     <div id="scanFeedback" style="display: none; margin: 10px 0; padding: 10px; border-radius: 4px;"></div>
 
@@ -149,39 +190,45 @@
                     </div>
 
                     <div class="modal-actions">
-                        <button class="btn secondary-btn" id="cancelLoadingBtn">Cancelar</button>
-                        <button class="btn primary-btn" id="confirmLoadingBtn" disabled>Iniciar Carregamento</button>
+                        <button class="btn secondary-btn" id="cancelProcessBtn">Cancelar</button>
+                        <button class="btn primary-btn" id="confirmProcessBtn" disabled>Iniciar Processo</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Modal Finalizar Operação -->
-            <div class="modal" id="finishLoadingModal">
+            <!-- Modal Etapa do Processo -->
+            <div class="modal" id="processStepModal">
                 <div class="modal-content">
                     <span class="close-modal">&times;</span>
-                    <h2 id="finishModalTitle">Finalizar Operação</h2>
+                    <h2 id="processStepTitle">Etapa do Processo</h2>
 
-                    <div id="finishScanFeedback" style="display: none; margin: 10px 0; padding: 10px; border-radius: 4px;"></div>
+                    <div id="processStepFeedback" style="display: none; margin: 10px 0; padding: 10px; border-radius: 4px;"></div>
+
+                    <div class="process-info">
+                        <div><strong>DT:</strong> <span id="processDtNumber"></span></div>
+                        <div><strong>Veículo:</strong> <span id="processVehicleType"></span></div>
+                        <div><strong>Doca:</strong> <span id="processDockNumber"></span></div>
+                    </div>
 
                     <div class="qr-scanner-container">
-                        <video id="finishQrScanner" width="100%" playsinline></video>
-                        <button class="btn primary-btn" id="startFinishScannerBtn">
+                        <video id="stepQrScanner" width="100%" playsinline></video>
+                        <button class="btn primary-btn" id="startStepScannerBtn">
                             <i class="fas fa-qrcode"></i> Ativar Leitor QR Code
                         </button>
                     </div>
 
-                    <div id="operatorFinishInfo" style="display: none; margin: 10px 0;">
-                        Operador: <strong id="operatorFinishName"></strong>
+                    <div id="stepOperatorInfo" style="display: none; margin: 10px 0;">
+                        Operador: <strong id="stepOperatorName"></strong>
                     </div>
 
-                    <div id="bindersList" style="display: none; margin: 10px 0; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
-                        <h3>Amarradores:</h3>
-                        <!-- Lista de amarradores será gerada aqui -->
+                    <div id="helpersList" style="display: none; margin: 10px 0; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+                        <h3>Ajudantes:</h3>
+                        <!-- Lista de ajudantes será gerada aqui -->
                     </div>
 
                     <div class="modal-actions">
-                        <button class="btn secondary-btn" id="cancelFinishBtn">Cancelar</button>
-                        <button class="btn primary-btn" id="confirmFinishBtn" disabled>Confirmar</button>
+                        <button class="btn secondary-btn" id="cancelStepBtn">Cancelar</button>
+                        <button class="btn primary-btn" id="confirmStepBtn" disabled>Confirmar</button>
                     </div>
                 </div>
             </div>
@@ -197,7 +244,7 @@
     <script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
     
     <!-- App Script -->
-     <script src="../js/app.js"></script>
+    <script src="../js/app.js"></script>
     <script src="../js/dashboard.js"></script>
 </body>
 </html>

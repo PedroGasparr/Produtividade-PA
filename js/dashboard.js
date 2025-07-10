@@ -4,18 +4,18 @@ const db = firebase.database();
 // Variáveis globais
 let currentUser = null;
 let qrScanner = null;
-let finishQrScanner = null;
-let currentOperations = [];
+let stepQrScanner = null;
+let currentProcesses = [];
+let currentStepModalProcessId = null;
+let currentStepModalStage = null;
 let cameras = [];
-let currentCameraIndex = 0;
 
 // Elementos da página
 const elements = {
-    startLoadingBtn: document.getElementById('startLoadingBtn'),
-    finishLoadingBtn: document.getElementById('finishLoadingBtn'),
+    startProcessBtn: document.getElementById('startProcessBtn'),
     operationsGrid: document.getElementById('operationsGrid'),
-    startLoadingModal: document.getElementById('startLoadingModal'),
-    finishLoadingModal: document.getElementById('finishLoadingModal'),
+    startProcessModal: document.getElementById('startProcessModal'),
+    processStepModal: document.getElementById('processStepModal'),
     currentUser: document.getElementById('currentUser'),
     
     // Modal de Início
@@ -26,20 +26,23 @@ const elements = {
     dtNumber: document.getElementById('dtNumber'),
     vehicleType: document.getElementById('vehicleType'),
     dockNumber: document.getElementById('dockNumber'),
-    confirmLoadingBtn: document.getElementById('confirmLoadingBtn'),
-    cancelLoadingBtn: document.getElementById('cancelLoadingBtn'),
+    confirmProcessBtn: document.getElementById('confirmProcessBtn'),
+    cancelProcessBtn: document.getElementById('cancelProcessBtn'),
     scanFeedback: document.getElementById('scanFeedback'),
     
-    // Modal de Finalização
-    finishQrScanner: document.getElementById('finishQrScanner'),
-    startFinishScannerBtn: document.getElementById('startFinishScannerBtn'),
-    operatorFinishName: document.getElementById('operatorFinishName'),
-    operatorFinishInfo: document.getElementById('operatorFinishInfo'),
-    bindersList: document.getElementById('bindersList'),
-    confirmFinishBtn: document.getElementById('confirmFinishBtn'),
-    cancelFinishBtn: document.getElementById('cancelFinishBtn'),
-    finishScanFeedback: document.getElementById('finishScanFeedback'),
-    finishModalTitle: document.getElementById('finishModalTitle')
+    // Modal de Etapa
+    processStepTitle: document.getElementById('processStepTitle'),
+    processDtNumber: document.getElementById('processDtNumber'),
+    processVehicleType: document.getElementById('processVehicleType'),
+    processDockNumber: document.getElementById('processDockNumber'),
+    stepQrScanner: document.getElementById('stepQrScanner'),
+    startStepScannerBtn: document.getElementById('startStepScannerBtn'),
+    stepOperatorName: document.getElementById('stepOperatorName'),
+    stepOperatorInfo: document.getElementById('stepOperatorInfo'),
+    helpersList: document.getElementById('helpersList'),
+    confirmStepBtn: document.getElementById('confirmStepBtn'),
+    cancelStepBtn: document.getElementById('cancelStepBtn'),
+    processStepFeedback: document.getElementById('processStepFeedback')
 };
 
 // Inicialização do dashboard
@@ -51,120 +54,137 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             currentUser = user;
             elements.currentUser.textContent = user.displayName || user.email;
-            initializeOperations();
+            initializeProcesses();
             setupEventListeners();
         }
     });
 });
 
-function initializeOperations() {
+function initializeProcesses() {
     // Limpar qualquer intervalo existente
-    if (window.operationsInterval) {
-        clearInterval(window.operationsInterval);
+    if (window.processesInterval) {
+        clearInterval(window.processesInterval);
     }
 
-    db.ref('operations').on('value', snapshot => {
-        currentOperations = [];
+    db.ref('processes').on('value', snapshot => {
+        currentProcesses = [];
         elements.operationsGrid.innerHTML = '';
         
         snapshot.forEach(childSnapshot => {
-            const operation = { id: childSnapshot.key, ...childSnapshot.val() };
-            if (['loading', 'binding', 'paused', 'awaiting_binding'].includes(operation.status)) {
-                currentOperations.push(operation);
-                renderOperationCard(operation);
+            const process = { id: childSnapshot.key, ...childSnapshot.val() };
+            if (process.status !== 'completed') {
+                currentProcesses.push(process);
+                renderProcessCard(process);
             }
         });
         
-        elements.finishLoadingBtn.disabled = currentOperations.length === 0;
-
         // Iniciar intervalo para atualizar os tempos
-        startOperationsTimer();
+        startProcessesTimer();
     });
 }
 
-function renderOperationCard(operation) {
+function renderProcessCard(process) {
     const card = document.createElement('div');
     card.className = 'operation-card';
-    card.dataset.id = operation.id;
+    card.dataset.id = process.id;
 
-    const elapsedTime = calculateElapsedTime(operation);
-    
-    // Corrigindo a exibição dos amarradores
-    let bindersDisplay = '';
-    if (operation.binders) {
-        // Pegamos apenas os valores (nomes) dos amarradores
-        const binderNames = Object.values(operation.binders);
-        bindersDisplay = `<div>Amarradores: ${binderNames.join(', ')}</div>`;
-    }
+    const currentStage = getCurrentStage(process);
+    const elapsedTime = calculateElapsedTime(process);
     
     card.innerHTML = `
         <div class="operation-card-header">
-            <div class="operation-card-title">Doca ${operation.dock}</div>
-            <div class="operation-status ${operation.status}">${getStatusLabel(operation.status)}</div>
+            <div class="operation-card-title">Doca ${process.dock}</div>
+            <div class="operation-status">${getStageLabel(currentStage)}</div>
+            <div class="operation-stage">Etapa ${currentStage}</div>
         </div>
         
-        <div class="operation-card-time real-time">${formatTime(elapsedTime)}</div>
+        <div class="operation-card-time timer">${formatTime(elapsedTime)}</div>
         
         <div class="operation-card-details">
-            <div>DT: ${operation.dtNumber}</div>
-            <div>Veículo: ${operation.vehicleType}</div>
-            <div>Operador: ${operation.operatorName}</div>
-            ${bindersDisplay}
+            <div>DT: ${process.dtNumber}</div>
+            <div>Veículo: ${process.vehicleType}</div>
+            <div>Operador: ${process.operatorName || '-'}</div>
         </div>
         
-        <div class="operation-card-actions">
-            ${operation.status === 'loading' ? 
-                `<button class="btn finish-loading-btn" data-id="${operation.id}">Finalizar Carregamento</button>` : ''}
-            
-            ${operation.status === 'awaiting_binding' ? `
-                <button class="btn bind-operators-btn" data-id="${operation.id}">Vincular Amarradores</button>
-                <button class="btn start-binding-btn" data-id="${operation.id}">Iniciar Enlonamento</button>
-            ` : ''}
-            
-            ${operation.status === 'binding' ? 
-                `<button class="btn finish-binding-btn" data-id="${operation.id}">Finalizar Enlonamento</button>` : ''}
+        <div class="process-steps">
+            ${renderProcessSteps(process, currentStage)}
         </div>
     `;
 
     elements.operationsGrid.appendChild(card);
 
-    // Restante do código permanece o mesmo...
-    // Adicionar event listeners para os botões
-    if (operation.status === 'loading') {
-        card.querySelector('.finish-loading-btn').addEventListener('click', () => showFinishLoadingModal(operation.id));
+    // Adicionar event listeners para os botões de etapa
+    const stageButtons = card.querySelectorAll('.stage-action-btn');
+    stageButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const stage = button.dataset.stage;
+            showProcessStepModal(process.id, stage);
+        });
+    });
+}
+
+function renderProcessSteps(process, currentStage) {
+    const stages = [
+        { id: 1, name: 'Vistoria' },
+        { id: 2, name: 'Abertura' },
+        { id: 3, name: 'Separação' },
+        { id: 4, name: 'Faturamento' },
+        { id: 5, name: 'Carregamento' },
+        { id: 6, name: 'Fechamento' }
+    ];
+
+    return stages.map(stage => {
+        const isCompleted = process[`stage${stage.id}End`] !== undefined;
+        const isActive = currentStage === stage.id;
+        
+        let stageContent = `<div class="process-step ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}">`;
+        stageContent += `<h4>${stage.id}. ${stage.name}</h4>`;
+        
+        if (isCompleted) {
+            const startTime = process[`stage${stage.id}Start`];
+            const endTime = process[`stage${stage.id}End`];
+            const duration = formatTime(Math.floor((endTime - startTime) / 1000));
+            stageContent += `<div>Tempo: ${duration}</div>`;
+        } else if (isActive) {
+            stageContent += `<button class="btn stage-action-btn" data-stage="${stage.id}">Registrar ${stage.name}</button>`;
+        }
+        
+        stageContent += `</div>`;
+        return stageContent;
+    }).join('');
+}
+
+function getCurrentStage(process) {
+    for (let i = 1; i <= 6; i++) {
+        if (!process[`stage${i}End`]) {
+            return i;
+        }
     }
-    
-    if (operation.status === 'awaiting_binding') {
-        card.querySelector('.bind-operators-btn').addEventListener('click', () => showBindOperatorsModal(operation.id));
-        card.querySelector('.start-binding-btn').addEventListener('click', () => startOperationBinding(operation.id));
-    }
-    
-    if (operation.status === 'binding') {
-        card.querySelector('.finish-binding-btn').addEventListener('click', () => showFinishBindingModal(operation.id));
-    }
+    return 6; // Se todas as etapas estiverem completas
 }
 
 function setupEventListeners() {
     // Botões principais
-    elements.startLoadingBtn.addEventListener('click', () => {
-        resetStartLoadingForm();
-        elements.startLoadingModal.style.display = 'flex';
+    elements.startProcessBtn.addEventListener('click', () => {
+        resetStartProcessForm();
+        elements.startProcessModal.style.display = 'flex';
     });
     
     // Modal de Início
     elements.startScannerBtn.addEventListener('click', startScanner);
-    elements.cancelLoadingBtn.addEventListener('click', () => {
-        elements.startLoadingModal.style.display = 'none';
+    elements.cancelProcessBtn.addEventListener('click', () => {
+        elements.startProcessModal.style.display = 'none';
         stopScanner();
     });
-    elements.confirmLoadingBtn.addEventListener('click', confirmStartLoading);
+    elements.confirmProcessBtn.addEventListener('click', confirmStartProcess);
     
-    // Modal de Finalização
-    elements.startFinishScannerBtn.addEventListener('click', startFinishScanner);
-    elements.cancelFinishBtn.addEventListener('click', () => {
-        elements.finishLoadingModal.style.display = 'none';
-        stopFinishScanner();
+    // Modal de Etapa
+    elements.startStepScannerBtn.addEventListener('click', startStepScanner);
+    elements.cancelStepBtn.addEventListener('click', () => {
+        elements.processStepModal.style.display = 'none';
+        stopStepScanner();
     });
+    elements.confirmStepBtn.addEventListener('click', confirmProcessStep);
     
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -176,32 +196,29 @@ function setupEventListeners() {
     // Fechar modais
     document.querySelectorAll('.close-modal').forEach(btn => {
         btn.addEventListener('click', () => {
-            elements.startLoadingModal.style.display = 'none';
-            elements.finishLoadingModal.style.display = 'none';
+            elements.startProcessModal.style.display = 'none';
+            elements.processStepModal.style.display = 'none';
             stopScanner();
-            stopFinishScanner();
+            stopStepScanner();
         });
     });
 }
 
 function getRearCamera(cameras) {
-    // Primeiro tenta encontrar por nome (em português ou inglês)
     const rearCamera = cameras.find(camera => 
         camera.name.toLowerCase().includes('traseira') || 
         camera.name.toLowerCase().includes('rear') ||
         camera.name.toLowerCase().includes('back')
     );
     
-    // Se não encontrar por nome, tenta pela posição (em alguns dispositivos)
     if (!rearCamera) {
         return cameras.find(camera => camera.facing === 'environment') || 
-               cameras[cameras.length - 1]; // Última câmera geralmente é a traseira
+               cameras[cameras.length - 1];
     }
     
     return rearCamera;
 }
 
-// Modificação na função startScanner
 function startScanner() {
     stopScanner();
     
@@ -214,7 +231,7 @@ function startScanner() {
     });
     
     qrScanner.addListener('scan', content => {
-        handleQrScan(content, 'operator');
+        handleQrScan(content, 'start');
     });
     
     Instascan.Camera.getCameras()
@@ -224,9 +241,7 @@ function startScanner() {
                 throw new Error('Nenhuma câmera encontrada');
             }
             
-            // Sempre tentar usar a câmera traseira
             const selectedCamera = getRearCamera(cameras);
-            
             return qrScanner.start(selectedCamera);
         })
         .then(() => {
@@ -238,48 +253,19 @@ function startScanner() {
         });
 }
 
-function startOperationsTimer() {
-    // Limpar intervalo anterior se existir
-    if (window.operationsInterval) {
-        clearInterval(window.operationsInterval);
-    }
-
-    // Atualizar os tempos a cada segundo
-    window.operationsInterval = setInterval(() => {
-        const cards = document.querySelectorAll('.operation-card');
-        cards.forEach(card => {
-            const operationId = card.dataset.id;
-            const operation = currentOperations.find(op => op.id === operationId);
-            
-            if (operation) {
-                const elapsedTime = calculateElapsedTime(operation);
-                const timeElement = card.querySelector('.operation-card-time');
-                if (timeElement) {
-                    timeElement.textContent = formatTime(elapsedTime);
-                }
-            }
-        });
-    }, 1000); // Atualiza a cada segundo
-}
-
-
-function isMobileDevice() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-}
-
-function startFinishScanner() {
-    stopFinishScanner();
+function startStepScanner() {
+    stopStepScanner();
     
-    elements.finishQrScanner.style.display = 'block';
-    finishQrScanner = new Instascan.Scanner({
-        video: elements.finishQrScanner,
+    elements.stepQrScanner.style.display = 'block';
+    stepQrScanner = new Instascan.Scanner({
+        video: elements.stepQrScanner,
         mirror: false,
         scanPeriod: 1,
         backgroundScan: false
     });
     
-    finishQrScanner.addListener('scan', content => {
-        handleQrScan(content, 'finish');
+    stepQrScanner.addListener('scan', content => {
+        handleQrScan(content, 'step');
     });
     
     Instascan.Camera.getCameras()
@@ -288,17 +274,15 @@ function startFinishScanner() {
                 throw new Error('Nenhuma câmera encontrada');
             }
             
-            // Sempre tentar usar a câmera traseira
             const selectedCamera = getRearCamera(cameraList);
-            
-            return finishQrScanner.start(selectedCamera);
+            return stepQrScanner.start(selectedCamera);
         })
         .then(() => {
-            showFeedback('Scanner iniciado com sucesso', 'success', 'finishScanFeedback');
+            showFeedback('Scanner iniciado com sucesso', 'success', 'processStepFeedback');
         })
         .catch(error => {
             console.error('Erro ao iniciar scanner:', error);
-            showFeedback('Erro ao acessar câmera: ' + error.message, 'error', 'finishScanFeedback');
+            showFeedback('Erro ao acessar câmera: ' + error.message, 'error', 'processStepFeedback');
         });
 }
 
@@ -310,22 +294,24 @@ function stopScanner() {
     elements.qrScanner.style.display = 'none';
 }
 
-function stopFinishScanner() {
-    if (finishQrScanner) {
-        finishQrScanner.stop();
-        finishQrScanner = null;
+function stopStepScanner() {
+    if (stepQrScanner) {
+        stepQrScanner.stop();
+        stepQrScanner = null;
     }
-    elements.finishQrScanner.style.display = 'none';
+    elements.stepQrScanner.style.display = 'none';
 }
 
 function handleQrScan(content, type) {
     const qrCodeRegex = /^GZL-EO-\d{5}$/;
     if (!qrCodeRegex.test(content)) {
-        showFeedback('QR Code inválido! Formato deve ser GZL-EO-XXXXX', 'error', type === 'operator' ? 'scanFeedback' : 'finishScanFeedback');
+        showFeedback('QR Code inválido! Formato deve ser GZL-EO-XXXXX', 'error', 
+                     type === 'start' ? 'scanFeedback' : 'processStepFeedback');
         return;
     }
 
-    showFeedback('Validando QR Code...', 'info', type === 'operator' ? 'scanFeedback' : 'finishScanFeedback');
+    showFeedback('Validando QR Code...', 'info', 
+                 type === 'start' ? 'scanFeedback' : 'processStepFeedback');
 
     db.ref('funcionarios').orderByChild('codigo').equalTo(content).once('value')
         .then(snapshot => {
@@ -334,75 +320,72 @@ function handleQrScan(content, type) {
             }
 
             let employeeData = null;
-            let employeeId = null;
             snapshot.forEach(child => {
                 employeeData = child.val();
-                employeeId = child.key;
                 return true;
             });
 
-            if (type === 'operator') {
+            if (type === 'start') {
                 // Lógica para operador principal
                 elements.operatorName.textContent = employeeData.nome;
                 elements.operatorInfo.style.display = 'block';
-                elements.confirmLoadingBtn.disabled = false;
+                elements.confirmProcessBtn.disabled = false;
                 showFeedback('Operador validado com sucesso!', 'success', 'scanFeedback');
                 stopScanner();
             } else {
-                if (elements.finishModalTitle.textContent.includes('Vincular')) {
-                    // Lógica para vincular amarradores
-                    addBinderToList(employeeData, employeeId);
+                if (currentStepModalStage === 2 || currentStepModalStage === 6) {
+                    // Etapas de abertura/fechamento (pode ter múltiplos ajudantes)
+                    addHelperToList(employeeData);
                 } else {
-                    // Lógica para operador de finalização
-                    elements.operatorFinishName.textContent = employeeData.nome;
-                    elements.operatorFinishInfo.style.display = 'block';
-                    elements.confirmFinishBtn.disabled = false;
-                    showFeedback('Operador validado com sucesso!', 'success', 'finishScanFeedback');
-                    stopFinishScanner();
+                    // Outras etapas (apenas um operador)
+                    elements.stepOperatorName.textContent = employeeData.nome;
+                    elements.stepOperatorInfo.style.display = 'block';
+                    elements.confirmStepBtn.disabled = false;
+                    showFeedback('Operador validado com sucesso!', 'success', 'processStepFeedback');
+                    stopStepScanner();
                 }
             }
         })
         .catch(error => {
             console.error('Erro ao validar QR Code:', error);
-            showFeedback('Erro: ' + error.message, 'error', type === 'operator' ? 'scanFeedback' : 'finishScanFeedback');
+            showFeedback('Erro: ' + error.message, 'error', 
+                        type === 'start' ? 'scanFeedback' : 'processStepFeedback');
         });
 }
 
-function addBinderToList(employeeData, employeeId) {
+function addHelperToList(employeeData) {
     // Verifica se o funcionário já está na lista
-    const existingBinder = Array.from(elements.bindersList.children).find(item => 
-        item.dataset.id === employeeId
+    const existingHelper = Array.from(elements.helpersList.children).find(item => 
+        item.textContent.includes(employeeData.nome)
     );
     
-    if (existingBinder) {
-        showFeedback(`${employeeData.nome} já está na lista`, 'info', 'finishScanFeedback');
+    if (existingHelper) {
+        showFeedback(`${employeeData.nome} já está na lista`, 'info', 'processStepFeedback');
         return;
     }
 
-    const binderItem = document.createElement('div');
-    binderItem.className = 'binder-item';
-    binderItem.dataset.id = employeeId;
-    binderItem.innerHTML = `
-        <span>${employeeData.nome} (${employeeData.cargo || 'Amarrador'})</span>
-        <button class="btn remove-binder-btn"><i class="fas fa-times"></i></button>
+    const helperItem = document.createElement('div');
+    helperItem.className = 'helper-item';
+    helperItem.innerHTML = `
+        <span>${employeeData.nome} (${employeeData.cargo || 'Ajudante'})</span>
+        <button class="btn remove-helper-btn"><i class="fas fa-times"></i></button>
     `;
     
-    binderItem.querySelector('.remove-binder-btn').addEventListener('click', () => {
-        binderItem.remove();
-        checkBindersList();
+    helperItem.querySelector('.remove-helper-btn').addEventListener('click', () => {
+        helperItem.remove();
+        checkHelpersList();
     });
     
-    elements.bindersList.appendChild(binderItem);
-    checkBindersList();
-    showFeedback(`${employeeData.nome} adicionado como amarrador`, 'success', 'finishScanFeedback');
+    elements.helpersList.appendChild(helperItem);
+    checkHelpersList();
+    showFeedback(`${employeeData.nome} adicionado como ajudante`, 'success', 'processStepFeedback');
 }
 
-function checkBindersList() {
-    elements.confirmFinishBtn.disabled = elements.bindersList.children.length === 0;
+function checkHelpersList() {
+    elements.confirmStepBtn.disabled = elements.helpersList.children.length === 0;
 }
 
-// Funções de Operação
-function confirmStartLoading() {
+function confirmStartProcess() {
     const dtNumber = elements.dtNumber.value.trim();
     const vehicleType = elements.vehicleType.value;
     const dockNumber = elements.dockNumber.value;
@@ -414,8 +397,8 @@ function confirmStartLoading() {
     }
 
     // Verificar se a doca já está em uso
-    const isDockInUse = currentOperations.some(op => 
-        op.dock === dockNumber && ['loading', 'binding', 'paused'].includes(op.status)
+    const isDockInUse = currentProcesses.some(process => 
+        process.dock === dockNumber && getCurrentStage(process) <= 6
     );
 
     if (isDockInUse) {
@@ -423,201 +406,216 @@ function confirmStartLoading() {
         return;
     }
 
-    elements.confirmLoadingBtn.disabled = true;
+    elements.confirmProcessBtn.disabled = true;
 
-    const newOperation = {
+    const newProcess = {
         dtNumber,
         vehicleType,
         dock: dockNumber,
         operatorName,
-        status: 'loading',
-        startTime: firebase.database.ServerValue.TIMESTAMP,
-        createdBy: currentUser.uid
+        status: 'in_progress',
+        stage1Start: firebase.database.ServerValue.TIMESTAMP,
+        createdBy: currentUser.uid,
+        createdAt: firebase.database.ServerValue.TIMESTAMP
     };
 
-    db.ref('operations').push(newOperation)
+    db.ref('processes').push(newProcess)
         .then(() => {
-            showFeedback('Carregamento iniciado com sucesso!', 'success', 'scanFeedback');
+            showFeedback('Processo iniciado com sucesso!', 'success', 'scanFeedback');
             setTimeout(() => {
-                elements.startLoadingModal.style.display = 'none';
-                resetStartLoadingForm();
+                elements.startProcessModal.style.display = 'none';
+                resetStartProcessForm();
             }, 1500);
         })
         .catch(error => {
-            console.error('Erro ao iniciar carregamento:', error);
-            showFeedback('Erro ao iniciar carregamento: ' + error.message, 'error', 'scanFeedback');
+            console.error('Erro ao iniciar processo:', error);
+            showFeedback('Erro ao iniciar processo: ' + error.message, 'error', 'scanFeedback');
         })
         .finally(() => {
-            elements.confirmLoadingBtn.disabled = false;
+            elements.confirmProcessBtn.disabled = false;
         });
 }
 
-function showFinishLoadingModal(operationId) {
-    resetFinishLoadingForm();
-    elements.finishModalTitle.textContent = 'Finalizar Carregamento';
-    elements.confirmFinishBtn.textContent = 'Finalizar Carregamento';
-    elements.confirmFinishBtn.onclick = () => confirmFinishOperation(operationId, 'loading');
-    elements.finishLoadingModal.style.display = 'flex';
-}
-
-function showBindOperatorsModal(operationId) {
-    resetFinishLoadingForm();
-    elements.finishModalTitle.textContent = 'Vincular Amarradores';
-    elements.confirmFinishBtn.textContent = 'Confirmar Amarradores';
-    elements.bindersList.style.display = 'block';
-    elements.confirmFinishBtn.onclick = () => confirmBinders(operationId);
-    elements.finishLoadingModal.style.display = 'flex';
-}
-
-function startOperationBinding(operationId) {
-    const operation = currentOperations.find(op => op.id === operationId);
-    if (!operation.binders || Object.keys(operation.binders).length === 0) {
-        alert('Adicione pelo menos um amarrador antes de iniciar');
-        return;
-    }
-
-    db.ref(`operations/${operationId}`).update({
-        status: 'binding',
-        bindingStartTime: firebase.database.ServerValue.TIMESTAMP
-    })
-    .then(() => {
-        alert('Enlonamento iniciado com sucesso');
-    })
-    .catch(error => {
-        console.error('Erro ao iniciar enlonamento:', error);
-        alert('Erro ao iniciar enlonamento');
-    });
-}
-
-function showFinishBindingModal(operationId) {
-    resetFinishLoadingForm();
-    elements.finishModalTitle.textContent = 'Finalizar Enlonamento';
-    elements.confirmFinishBtn.textContent = 'Finalizar Enlonamento';
-    elements.confirmFinishBtn.onclick = () => confirmFinishOperation(operationId, 'binding');
-    elements.finishLoadingModal.style.display = 'flex';
-}
-
-function confirmFinishOperation(operationId, operationType) {
-    const operatorName = elements.operatorFinishName.textContent;
-    if (!operatorName) {
-        showFeedback('Escaneie o QR Code do operador', 'error', 'finishScanFeedback');
-        return;
-    }
-
-    const updates = {
-        confirmedBy: operatorName,
-        confirmedAt: firebase.database.ServerValue.TIMESTAMP
-    };
-
-    if (operationType === 'loading') {
-        updates.status = 'awaiting_binding';
-        updates.loadingEndTime = firebase.database.ServerValue.TIMESTAMP;
-    } else {
-        updates.status = 'completed';
-        updates.bindingEndTime = firebase.database.ServerValue.TIMESTAMP;
-    }
-
-    elements.confirmFinishBtn.disabled = true;
-
-    db.ref(`operations/${operationId}`).update(updates)
-        .then(() => {
-            if (operationType === 'binding') {
-                saveOperationHistory(operationId);
-            }
-            showFeedback('Operação finalizada com sucesso!', 'success', 'finishScanFeedback');
-            setTimeout(() => {
-                elements.finishLoadingModal.style.display = 'none';
-            }, 1500);
-        })
-        .catch(error => {
-            console.error('Erro ao finalizar operação:', error);
-            showFeedback('Erro ao finalizar: ' + error.message, 'error', 'finishScanFeedback');
-        })
-        .finally(() => {
-            elements.confirmFinishBtn.disabled = false;
-        });
-}
-
-function confirmBinders(operationId) {
-    const binders = {};
+function showProcessStepModal(processId, stage) {
+    currentStepModalProcessId = processId;
+    currentStepModalStage = parseInt(stage);
     
-    // Coleta todos os amarradores da lista
-    Array.from(elements.bindersList.children).forEach(item => {
-        const employeeId = item.dataset.id;
-        const employeeName = item.textContent.trim().split(' (')[0];
-        binders[employeeId] = employeeName; // Salva como {id: nome}
-    });
+    const process = currentProcesses.find(p => p.id === processId);
+    if (!process) return;
+    
+    // Configurar modal conforme a etapa
+    resetProcessStepForm();
+    elements.processStepTitle.textContent = `Etapa ${stage} - ${getStageLabel(stage)}`;
+    elements.processDtNumber.textContent = process.dtNumber;
+    elements.processVehicleType.textContent = process.vehicleType;
+    elements.processDockNumber.textContent = process.dock;
+    
+    // Mostrar lista de ajudantes apenas para abertura/fechamento
+    if (stage === 2 || stage === 6) {
+        elements.helpersList.style.display = 'block';
+    }
+    
+    elements.processStepModal.style.display = 'flex';
+}
 
-    if (Object.keys(binders).length === 0) {
-        showFeedback('Adicione pelo menos um amarrador', 'error', 'finishScanFeedback');
+function confirmProcessStep() {
+    const processId = currentStepModalProcessId;
+    const stage = currentStepModalStage;
+    const process = currentProcesses.find(p => p.id === processId);
+    
+    if (!process) {
+        showFeedback('Processo não encontrado', 'error', 'processStepFeedback');
         return;
     }
 
-    elements.confirmFinishBtn.disabled = true;
+    const updates = {};
+    const now = firebase.database.ServerValue.TIMESTAMP;
+    
+    // Registrar finalização da etapa anterior
+    updates[`stage${stage}End`] = now;
+    
+    // Se for abertura/fechamento, registrar ajudantes
+    if (stage === 2 || stage === 6) {
+        const helpers = [];
+        Array.from(elements.helpersList.children).forEach(item => {
+            helpers.push(item.textContent.trim().split(' (')[0]);
+        });
+        updates[`stage${stage}Helpers`] = helpers;
+    } else {
+        // Registrar operador da etapa
+        updates[`stage${stage}Operator`] = elements.stepOperatorName.textContent;
+    }
+    
+    // Se não for a última etapa, iniciar a próxima
+    if (stage < 6) {
+        updates[`stage${stage + 1}Start`] = now;
+    } else {
+        // Se for a última etapa, marcar processo como completo
+        updates.status = 'completed';
+        updates.completedAt = now;
+    }
+    
+    // Calcular tempo de espera entre etapas
+    if (stage > 1) {
+        const prevStageEnd = process[`stage${stage - 1}End`] || now;
+        updates[`waitTime${stage - 1}_${stage}`] = now - prevStageEnd;
+    }
+    
+    elements.confirmStepBtn.disabled = true;
 
-    // Atualiza a operação no banco de dados
-    db.ref(`operations/${operationId}`).update({ 
-        binders: binders,
-        status: 'awaiting_binding'
-    })
-    .then(() => {
-        showFeedback(`${Object.keys(binders).length} amarrador(es) vinculado(s) com sucesso!`, 'success', 'finishScanFeedback');
-        setTimeout(() => {
-            elements.finishLoadingModal.style.display = 'none';
-            resetFinishLoadingForm();
-        }, 1500);
-    })
-    .catch(error => {
-        console.error('Erro ao vincular amarradores:', error);
-        showFeedback('Erro ao vincular: ' + error.message, 'error', 'finishScanFeedback');
-    })
-    .finally(() => {
-        elements.confirmFinishBtn.disabled = false;
-    });
+    db.ref(`processes/${processId}`).update(updates)
+        .then(() => {
+            if (stage === 6) {
+                saveProcessHistory(processId);
+            }
+            showFeedback(`Etapa ${stage} registrada com sucesso!`, 'success', 'processStepFeedback');
+            setTimeout(() => {
+                elements.processStepModal.style.display = 'none';
+            }, 1500);
+        })
+        .catch(error => {
+            console.error('Erro ao registrar etapa:', error);
+            showFeedback('Erro ao registrar: ' + error.message, 'error', 'processStepFeedback');
+        })
+        .finally(() => {
+            elements.confirmStepBtn.disabled = false;
+        });
 }
 
-function saveOperationHistory(operationId) {
-    const operation = currentOperations.find(op => op.id === operationId);
-    if (!operation) return;
+function saveProcessHistory(processId) {
+    const process = currentProcesses.find(p => p.id === processId);
+    if (!process) return;
 
     const historyData = {
-        operationId,
-        dtNumber: operation.dtNumber,
-        vehicleType: operation.vehicleType,
-        dock: operation.dock,
-        operator: operation.operatorName,
-        binders: operation.binders,
-        startTime: operation.startTime,
-        loadingEndTime: operation.loadingEndTime,
-        bindingStartTime: operation.bindingStartTime,
-        bindingEndTime: operation.bindingEndTime,
-        completedAt: firebase.database.ServerValue.TIMESTAMP
+        processId,
+        dtNumber: process.dtNumber,
+        vehicleType: process.vehicleType,
+        dock: process.dock,
+        operator: process.operatorName,
+        startTime: process.stage1Start,
+        completedAt: firebase.database.ServerValue.TIMESTAMP,
+        stages: {}
     };
+
+    // Coletar dados de todas as etapas
+    for (let i = 1; i <= 6; i++) {
+        historyData.stages[i] = {
+            start: process[`stage${i}Start`],
+            end: process[`stage${i}End`],
+            operator: process[`stage${i}Operator`],
+            helpers: process[`stage${i}Helpers`]
+        };
+        
+        if (i > 1) {
+            historyData.stages[i].waitTime = process[`waitTime${i-1}_${i}`];
+        }
+    }
 
     db.ref('history').push(historyData)
         .then(() => {
-            db.ref(`operations/${operationId}`).remove();
+            db.ref(`processes/${processId}`).remove();
         });
 }
 
+function startProcessesTimer() {
+    // Limpar intervalo anterior se existir
+    if (window.processesInterval) {
+        clearInterval(window.processesInterval);
+    }
+
+    // Atualizar os tempos a cada segundo
+    window.processesInterval = setInterval(() => {
+        const cards = document.querySelectorAll('.operation-card');
+        cards.forEach(card => {
+            const processId = card.dataset.id;
+            const process = currentProcesses.find(p => p.id === processId);
+            
+            if (process) {
+                const elapsedTime = calculateElapsedTime(process);
+                const timeElement = card.querySelector('.timer');
+                if (timeElement) {
+                    timeElement.textContent = formatTime(elapsedTime);
+                }
+            }
+        });
+    }, 1000);
+}
+
+function calculateElapsedTime(process) {
+    const currentStage = getCurrentStage(process);
+    const now = Date.now();
+    
+    // Tempo total é a soma de todas as etapas completas + etapa atual
+    let totalTime = 0;
+    
+    for (let i = 1; i <= currentStage; i++) {
+        const start = process[`stage${i}Start`] || now;
+        const end = i < currentStage ? (process[`stage${i}End`] || now) : now;
+        
+        totalTime += (end - start);
+    }
+    
+    return Math.floor(totalTime / 1000);
+}
+
 // Funções auxiliares
-function resetStartLoadingForm() {
+function resetStartProcessForm() {
     elements.dtNumber.value = '';
     elements.vehicleType.value = '';
     elements.dockNumber.value = '';
     elements.operatorName.textContent = '';
     elements.operatorInfo.style.display = 'none';
-    elements.confirmLoadingBtn.disabled = true;
+    elements.confirmProcessBtn.disabled = true;
     elements.scanFeedback.style.display = 'none';
 }
 
-function resetFinishLoadingForm() {
-    elements.operatorFinishName.textContent = '';
-    elements.operatorFinishInfo.style.display = 'none';
-    elements.bindersList.innerHTML = '';
-    elements.bindersList.style.display = 'none';
-    elements.confirmFinishBtn.disabled = true;
-    elements.finishScanFeedback.style.display = 'none';
+function resetProcessStepForm() {
+    elements.stepOperatorName.textContent = '';
+    elements.stepOperatorInfo.style.display = 'none';
+    elements.helpersList.innerHTML = '';
+    elements.helpersList.style.display = 'none';
+    elements.confirmStepBtn.disabled = true;
+    elements.processStepFeedback.style.display = 'none';
 }
 
 function showFeedback(message, type, elementId) {
@@ -645,25 +643,6 @@ function showFeedback(message, type, elementId) {
     }
 }
 
-function calculateElapsedTime(operation) {
-    if (!operation.startTime) return 0;
-    
-    const now = Date.now();
-    const start = operation.startTime;
-    const end = operation.status === 'completed' ? (operation.bindingEndTime || operation.loadingEndTime || now) : now;
-    
-    let pausedTime = 0;
-    if (operation.pauses) {
-        Object.values(operation.pauses).forEach(p => {
-            const pauseStart = p.start || 0;
-            const pauseEnd = p.end || (operation.status === 'paused' ? now : p.start || 0);
-            pausedTime += pauseEnd - pauseStart;
-        });
-    }
-    
-    return Math.floor((end - start - pausedTime) / 1000);
-}
-
 function formatTime(seconds) {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -672,13 +651,14 @@ function formatTime(seconds) {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
-function getStatusLabel(status) {
+function getStageLabel(stage) {
     const labels = {
-        'loading': 'Carregando',
-        'awaiting_binding': 'Aguardando Enlonamento',
-        'binding': 'Enlonamento',
-        'completed': 'Concluído',
-        'paused': 'Pausado'
+        1: 'Vistoria',
+        2: 'Abertura',
+        3: 'Separação',
+        4: 'Faturamento',
+        5: 'Carregamento',
+        6: 'Fechamento'
     };
-    return labels[status] || status;
+    return labels[stage] || `Etapa ${stage}`;
 }
