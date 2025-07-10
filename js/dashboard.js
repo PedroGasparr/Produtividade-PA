@@ -146,7 +146,13 @@ function renderProcessSteps(process, currentStage) {
             const duration = formatTime(Math.floor((endTime - startTime) / 1000));
             stageContent += `<div>Tempo: ${duration}</div>`;
         } else if (isActive) {
-            stageContent += `<button class="btn stage-action-btn" data-stage="${stage.id}">Registrar ${stage.name}</button>`;
+            if (stage.id === 2 || stage.id === 6) {
+                // Etapas de abertura/fechamento (mostrar botão para adicionar ajudantes)
+                stageContent += `<button class="btn stage-action-btn" data-stage="${stage.id}">Adicionar Ajudantes</button>`;
+            } else {
+                // Outras etapas
+                stageContent += `<button class="btn stage-action-btn" data-stage="${stage.id}">Iniciar ${stage.name}</button>`;
+            }
         }
         
         stageContent += `</div>`;
@@ -202,21 +208,6 @@ function setupEventListeners() {
             stopStepScanner();
         });
     });
-}
-
-function getRearCamera(cameras) {
-    const rearCamera = cameras.find(camera => 
-        camera.name.toLowerCase().includes('traseira') || 
-        camera.name.toLowerCase().includes('rear') ||
-        camera.name.toLowerCase().includes('back')
-    );
-    
-    if (!rearCamera) {
-        return cameras.find(camera => camera.facing === 'environment') || 
-               cameras[cameras.length - 1];
-    }
-    
-    return rearCamera;
 }
 
 function startScanner() {
@@ -382,7 +373,10 @@ function addHelperToList(employeeData) {
 }
 
 function checkHelpersList() {
-    elements.confirmStepBtn.disabled = elements.helpersList.children.length === 0;
+    // Para etapas que requerem ajudantes (abertura/fechamento), verifica se há pelo menos um
+    if (currentStepModalStage === 2 || currentStepModalStage === 6) {
+        elements.confirmStepBtn.disabled = elements.helpersList.children.length === 0;
+    }
 }
 
 function confirmStartProcess() {
@@ -451,8 +445,11 @@ function showProcessStepModal(processId, stage) {
     elements.processDockNumber.textContent = process.dock;
     
     // Mostrar lista de ajudantes apenas para abertura/fechamento
-    if (stage === 2 || stage === 6) {
+    if (stage == 2 || stage == 6) {
         elements.helpersList.style.display = 'block';
+        elements.confirmStepBtn.textContent = 'Confirmar Ajudantes';
+    } else {
+        elements.confirmStepBtn.textContent = 'Iniciar Etapa';
     }
     
     elements.processStepModal.style.display = 'flex';
@@ -471,18 +468,29 @@ function confirmProcessStep() {
     const updates = {};
     const now = firebase.database.ServerValue.TIMESTAMP;
     
-    // Registrar finalização da etapa anterior
+    // Se for etapa de abertura/fechamento, verificar se há ajudantes
+    if ((stage == 2 || stage == 6) && elements.helpersList.children.length === 0) {
+        showFeedback('Adicione pelo menos um ajudante', 'error', 'processStepFeedback');
+        return;
+    }
+    
+    // Se for outra etapa, verificar se há operador
+    if (stage != 2 && stage != 6 && !elements.stepOperatorName.textContent) {
+        showFeedback('Escaneie o QR Code do operador', 'error', 'processStepFeedback');
+        return;
+    }
+
+    // Registrar finalização da etapa atual
     updates[`stage${stage}End`] = now;
     
-    // Se for abertura/fechamento, registrar ajudantes
-    if (stage === 2 || stage === 6) {
+    // Registrar operador/ajudantes conforme a etapa
+    if (stage == 2 || stage == 6) {
         const helpers = [];
         Array.from(elements.helpersList.children).forEach(item => {
             helpers.push(item.textContent.trim().split(' (')[0]);
         });
         updates[`stage${stage}Helpers`] = helpers;
     } else {
-        // Registrar operador da etapa
         updates[`stage${stage}Operator`] = elements.stepOperatorName.textContent;
     }
     
@@ -505,10 +513,12 @@ function confirmProcessStep() {
 
     db.ref(`processes/${processId}`).update(updates)
         .then(() => {
+            showFeedback(`Etapa ${stage} registrada com sucesso!`, 'success', 'processStepFeedback');
+            
             if (stage === 6) {
                 saveProcessHistory(processId);
             }
-            showFeedback(`Etapa ${stage} registrada com sucesso!`, 'success', 'processStepFeedback');
+            
             setTimeout(() => {
                 elements.processStepModal.style.display = 'none';
             }, 1500);
@@ -516,8 +526,6 @@ function confirmProcessStep() {
         .catch(error => {
             console.error('Erro ao registrar etapa:', error);
             showFeedback('Erro ao registrar: ' + error.message, 'error', 'processStepFeedback');
-        })
-        .finally(() => {
             elements.confirmStepBtn.disabled = false;
         });
 }
