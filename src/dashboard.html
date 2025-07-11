@@ -2,664 +2,375 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard - Sistema PA</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Logístico - Controle de Processos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
-            --primary-color: #3498db;
-            --secondary-color: #2c3e50;
-            --success-color: #2e7d32;
-            --warning-color: #e65100;
-            --danger-color: #c62828;
-            --light-color: #f5f5f5;
-            --dark-color: #333;
-        }
-        
-        * {
-            box-sizing: border-box;
+            --primary: #3498db;
+            --secondary: #2c3e50;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #34495e;
         }
         
         body {
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+        }
+        
+        .process-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+            border: none;
+        }
+        
+        .process-header {
+            background-color: var(--secondary);
+            color: white;
+            padding: 15px;
+            position: relative;
+        }
+        
+        .process-title {
+            font-weight: 600;
             margin: 0;
-            padding: 0;
-            background-color: var(--light-color);
-            font-size: 14px;
         }
         
-        .dashboard-container {
-            display: flex;
-            min-height: 100vh;
-            flex-direction: column;
-        }
-        
-        .sidebar {
-            background-color: var(--secondary-color);
+        .process-status {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: var(--primary);
             color: white;
-            padding: 10px 0;
-            position: fixed;
-            top: 0;
-            left: -250px;
-            width: 250px;
-            height: 100%;
-            z-index: 1000;
-            transition: left 0.3s ease;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
         }
         
-        .sidebar.active {
-            left: 0;
+        .process-body {
+            padding: 20px;
+            background-color: white;
         }
         
-        .sidebar-header {
-            padding: 0 15px 15px;
-            text-align: center;
-            border-bottom: 1px solid #34495e;
+        .process-info {
+            margin-bottom: 15px;
         }
         
-        .sidebar-logo {
-            max-width: 80%;
-            margin-bottom: 10px;
+        .process-info div {
+            margin-bottom: 5px;
+            font-size: 0.9rem;
         }
         
-        .sidebar-menu {
-            list-style: none;
-            padding: 0;
-            margin: 15px 0 0;
+        .process-info strong {
+            color: var(--dark);
         }
         
-        .sidebar-menu li {
+        .stage-container {
+            margin-top: 15px;
+        }
+        
+        .stage {
+            border-left: 4px solid #ddd;
             padding: 10px 15px;
-            border-left: 4px solid transparent;
+            margin-bottom: 15px;
+            position: relative;
         }
         
-        .sidebar-menu li.active {
-            border-left: 4px solid var(--primary-color);
-            background-color: #34495e;
+        .stage.active {
+            border-left-color: var(--primary);
+            background-color: rgba(52, 152, 219, 0.05);
         }
         
-        .sidebar-menu a {
-            color: white;
-            text-decoration: none;
+        .stage.completed {
+            border-left-color: var(--success);
+        }
+        
+        .stage-number {
+            position: absolute;
+            left: -12px;
+            top: 10px;
+            background-color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
+            justify-content: center;
+            border: 2px solid #ddd;
+            font-weight: bold;
+            font-size: 0.8rem;
         }
         
-        .sidebar-menu i {
-            margin-right: 10px;
-            width: 20px;
-            text-align: center;
+        .stage.active .stage-number {
+            border-color: var(--primary);
+            background-color: var(--primary);
+            color: white;
         }
         
-        .main-content {
-            flex: 1;
-            padding: 15px;
-            margin-top: 60px;
+        .stage.completed .stage-number {
+            border-color: var(--success);
+            background-color: var(--success);
+            color: white;
         }
         
-        .mobile-header {
+        .stage-title {
+            font-weight: 600;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: 10px 15px;
-            background-color: var(--secondary-color);
-            color: white;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            z-index: 900;
         }
         
-        .mobile-header h1 {
-            font-size: 1.2em;
-            margin: 0;
+        .stage-time {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            margin-top: 5px;
         }
         
-        .menu-toggle {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.5em;
-            cursor: pointer;
-        }
-        
-        .user-info {
-            background-color: #e3f2fd;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8em;
-            color: var(--dark-color);
-        }
-        
-        .action-buttons {
-            margin-bottom: 15px;
+        .stage-actions {
+            margin-top: 10px;
             display: flex;
-            flex-wrap: wrap;
             gap: 10px;
         }
         
-        .btn {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            font-size: 0.9em;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 120px;
-        }
-        
-        .btn i {
-            margin-right: 5px;
-        }
-        
-        .primary-btn {
-            background-color: var(--primary-color);
-            color: white;
-        }
-        
-        .secondary-btn {
-            background-color: #e0e0e0;
-            color: var(--dark-color);
-        }
-        
-        .success-btn {
-            background-color: var(--success-color);
-            color: white;
-        }
-        
-        .danger-btn {
-            background-color: var(--danger-color);
-            color: white;
-        }
-        
-        .warning-btn {
-            background-color: var(--warning-color);
-            color: white;
-        }
-        
-        .operations-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 15px;
-        }
-        
-        @media (min-width: 768px) {
-            .operations-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        
-        @media (min-width: 1200px) {
-            .operations-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-        
-        .operation-card {
-            background-color: white;
-            border-radius: 8px;
-            padding: 12px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            position: relative;
-        }
-        
-        .operation-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        
-        .operation-status {
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.7em;
-            font-weight: 500;
-        }
-        
-        .operation-status.loading {
-            background-color: #fff3e0;
-            color: var(--warning-color);
-        }
-        
-        .operation-status.awaiting_binding {
-            background-color: #e3f2fd;
-            color: #1565c0;
-        }
-        
-        .operation-status.binding {
-            background-color: #e8f5e9;
-            color: var(--success-color);
-        }
-        
-        .operation-status.completed {
-            background-color: #f5f5f5;
-            color: #616161;
-        }
-        
-        .operation-card-time {
-            font-size: 1.3em;
-            font-weight: bold;
-            margin: 8px 0;
-            text-align: center;
-            font-family: monospace;
-        }
-        
-        .operation-card-details div {
-            margin-bottom: 4px;
-            font-size: 0.8em;
-        }
-        
-        .operation-card-actions {
-            margin-top: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        
-        .operation-card-actions button {
-            width: 100%;
-            font-size: 0.8em;
-            padding: 6px 10px;
-        }
-        
-        .operation-stage {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background-color: var(--primary-color);
-            color: white;
-            padding: 2px 5px;
-            border-radius: 3px;
-            font-size: 0.7em;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        
-        .modal-content {
-            background-color: white;
-            padding: 15px;
-            border-radius: 5px;
-            width: 95%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            position: relative;
-        }
-        
-        .close-modal {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            font-size: 1.5em;
-            cursor: pointer;
-            background: none;
-            border: none;
-            color: var(--dark-color);
-        }
-        
-        .form-group {
-            margin-bottom: 12px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            font-size: 0.9em;
-        }
-        
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-        
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            margin-top: 15px;
-        }
-        
-        .qr-scanner-container {
-            margin: 12px 0;
-            text-align: center;
-        }
-        
-        .qr-scanner-container video {
-            width: 100%;
-            max-height: 250px;
-            background-color: #000;
-            margin-bottom: 8px;
-            border-radius: 4px;
-        }
-        
-        .message {
-            padding: 8px 12px;
-            margin: 8px 0;
-            border-radius: 4px;
-            display: none;
-            font-size: 0.8em;
-        }
-        
-        .message.error {
-            background-color: #ffebee;
-            color: var(--danger-color);
-            border-left: 3px solid var(--danger-color);
-        }
-        
-        .message.success {
-            background-color: #e8f5e9;
-            color: var(--success-color);
-            border-left: 3px solid var(--success-color);
-        }
-        
-        .message.info {
-            background-color: #e3f2fd;
-            color: #1565c0;
-            border-left: 3px solid #1565c0;
-        }
-        
-        .process-steps {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 15px;
-        }
-        
-        .process-step {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-            font-size: 0.8em;
-        }
-        
-        .process-step h4 {
-            margin: 0 0 5px 0;
-            font-size: 1em;
-        }
-        
-        .process-step.active {
-            background-color: #e3f2fd;
-            border-color: var(--primary-color);
-        }
-        
-        .process-step.completed {
-            background-color: #e8f5e9;
-            border-color: var(--success-color);
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.8rem;
         }
         
         .timer {
             font-family: monospace;
             font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .helpers-list {
+            margin-top: 10px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 5px;
+            max-height: 100px;
+            overflow-y: auto;
         }
         
         .helper-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 5px;
-            margin-bottom: 5px;
-            background-color: #f5f5f5;
-            border-radius: 3px;
-            font-size: 0.8em;
+            padding: 3px 5px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.8rem;
         }
         
-        .remove-helper-btn {
-            background: none;
-            border: none;
-            color: var(--danger-color);
-            cursor: pointer;
-            padding: 0 5px;
+        .helper-item:last-child {
+            border-bottom: none;
         }
         
-        .time-details {
-            font-size: 0.7em;
-            color: #666;
-            margin-top: 3px;
+        .qr-scanner-container {
+            margin: 15px 0;
+            text-align: center;
         }
         
-        .time-details span {
-            display: block;
-            margin-bottom: 2px;
-        }
-        
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
+        .qr-scanner {
             width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            z-index: 999;
+            max-width: 300px;
+            margin: 0 auto;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
             display: none;
         }
         
-        .camera-switch {
-            margin-top: 8px;
-            background-color: #333;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            cursor: pointer;
+        .qr-video {
+            width: 100%;
+            height: auto;
         }
         
-        .stage-time-info {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.7em;
-            margin-top: 5px;
-        }
-        
-        .stage-time-info div {
-            background-color: #f0f0f0;
-            padding: 2px 5px;
-            border-radius: 3px;
-        }
-        
-        .step-actions {
-            display: flex;
-            gap: 8px;
+        .qr-result {
             margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            display: none;
         }
         
-        .step-actions button {
-            flex: 1;
+        .process-timer {
+            text-align: center;
+            font-size: 1.3rem;
+            margin: 10px 0;
+            font-weight: bold;
+            color: var(--dark);
+        }
+        
+        .dock-badge {
+            background-color: var(--warning);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+        
+        .no-processes {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
         }
     </style>
 </head>
 <body>
-    <div class="overlay" id="overlay"></div>
-    
-    <!-- Mobile Header -->
-    <header class="mobile-header">
-        <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
-        <h1>Painel de Controle</h1>
-        <div class="user-info">
-            <span id="currentUser">Usuário</span>
-        </div>
-    </header>
-
-    <!-- Sidebar -->
-    <nav class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <img src="../img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo PA" class="sidebar-logo">
-            <h2>Sistema PA 5.0</h2>
-        </div>
-        <ul class="sidebar-menu">
-            <li class="active"><a href="dashboard.html"><i class="fas fa-home"></i> Início</a></li>
-            <li><a href="#"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            <li><a href="cadastro_colaborador.html"><i class="fas fa-users"></i> Cadastrar Funcionários</a></li>
-            <li><a href="buscar_funcionarios.html"><i class="fas fa-search"></i> Buscar Funcionários</a></li>
-            <li><a href="painel_de_controle.html"><i class="fa fa-tasks"></i> Painel De Controle</a></li>
-            <li><a href="historico.html"><i class="fas fa-history"></i> Histórico</a></li>
-            <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
-        </ul>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <!-- Action Buttons -->
-        <div class="action-buttons">
-            <button class="btn primary-btn" id="startProcessBtn">
-                <i class="fas fa-plus"></i> Iniciar Processo
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0">Controle de Processos Logísticos</h1>
+            <button class="btn btn-primary" id="newProcessBtn">
+                <i class="fas fa-plus"></i> Novo Processo
             </button>
         </div>
-
-        <!-- Current Operations -->
-        <section class="operations-section">
-            <h2>Processos em Andamento</h2>
-            <div class="operations-grid" id="operationsGrid">
-                <!-- Cards serão gerados dinamicamente aqui -->
-            </div>
-        </section>
-
-        <!-- Modal Iniciar Processo -->
-        <div class="modal" id="startProcessModal">
-            <div class="modal-content">
-                <button class="close-modal">&times;</button>
-                <h2>Iniciar Novo Processo</h2>
-
-                <div id="scanFeedback" class="message"></div>
-
-                <div class="form-group">
-                    <label for="dtNumber">Número da DT - Nº do Pedido:</label>
-                    <input type="text" id="dtNumber" placeholder="Digite o número da DT" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="vehicleType">Tipo de Veículo:</label>
-                    <select id="vehicleType" required>
-                        <option value="">Selecione...</option>
-                        <option value="Caminhão">Caminhão</option>
-                        <option value="Carreta">Carreta</option>
-                        <option value="Bitrem">Bitrem</option>
-                        <option value="Rodotrem">Rodotrem</option>
-                        <option value="VUC">VUC</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="dockNumber">Doca:</label>
-                    <select id="dockNumber" required>
-                        <option value="">Selecione...</option>
-                        <option value="1">Doca 1</option>
-                        <option value="2">Doca 2</option>
-                        <option value="3">Doca 3</option>
-                        <option value="4">Doca 4</option>
-                        <option value="5">Doca 5</option>
-                        <option value="6">Doca 6</option>
-                        <option value="7">Doca 7</option>
-                        <option value="8">Doca 8</option>
-                        <option value="9">Doca 9</option>
-                        <option value="10">Doca 10</option>
-                        <option value="11">Doca 11</option>
-                        <option value="12">Doca 12</option>
-                        <option value="13">Doca 13</option>
-                        <option value="14">Doca 14</option>
-                        <option value="15">Doca 15</option>
-                    </select>
-                </div>
-
-                <div class="qr-scanner-container">
-                    <video id="qrScanner" width="100%" playsinline></video>
-                    <button class="camera-switch" id="switchCameraBtn" style="display: none;">
-                        <i class="fas fa-sync-alt"></i> Trocar Câmera
-                    </button>
-                    <button class="btn primary-btn" id="startScannerBtn">
-                        <i class="fas fa-qrcode"></i> Ler QR Code do Operador
-                    </button>
-                </div>
-
-                <div id="operatorInfo" style="display: none; margin: 10px 0;">
-                    Operador: <strong id="operatorName"></strong>
-                </div>
-
-                <div class="modal-actions">
-                    <button class="btn secondary-btn" id="cancelProcessBtn">Cancelar</button>
-                    <button class="btn primary-btn" id="confirmProcessBtn" disabled>Iniciar Processo</button>
+        
+        <div id="processesContainer" class="row">
+            <!-- Processos serão inseridos aqui dinamicamente -->
+            <div class="col-12">
+                <div class="no-processes" id="noProcesses">
+                    <i class="fas fa-truck fa-3x mb-3"></i>
+                    <h4>Nenhum processo em andamento</h4>
+                    <p>Clique em "Novo Processo" para começar</p>
                 </div>
             </div>
         </div>
-
-        <!-- Modal Etapa do Processo -->
-        <div class="modal" id="processStepModal">
+    </div>
+    
+    <!-- Modal Novo Processo -->
+    <div class="modal fade" id="newProcessModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
             <div class="modal-content">
-                <button class="close-modal">&times;</button>
-                <h2 id="processStepTitle">Etapa do Processo</h2>
-
-                <div id="processStepFeedback" class="message"></div>
-
-                <div class="process-info">
-                    <div><strong>DT:</strong> <span id="processDtNumber"></span></div>
-                    <div><strong>Veículo:</strong> <span id="processVehicleType"></span></div>
-                    <div><strong>Doca:</strong> <span id="processDockNumber"></span></div>
+                <div class="modal-header">
+                    <h5 class="modal-title">Iniciar Novo Processo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-
-                <div class="qr-scanner-container">
-                    <video id="stepQrScanner" width="100%" playsinline></video>
-                    <button class="camera-switch" id="switchStepCameraBtn" style="display: none;">
-                        <i class="fas fa-sync-alt"></i> Trocar Câmera
-                    </button>
-                    <button class="btn primary-btn" id="startStepScannerBtn">
-                        <i class="fas fa-qrcode"></i> <span id="scanActionText">Ler QR Code</span>
-                    </button>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="processDT" class="form-label">Número da DT</label>
+                        <input type="text" class="form-control" id="processDT" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="processVehicle" class="form-label">Tipo de Veículo</label>
+                        <select class="form-select" id="processVehicle" required>
+                            <option value="">Selecione...</option>
+                            <option value="Carreta">Carreta</option>
+                            <option value="Truck">Truck</option>
+                            <option value="Bitrem">Bitrem</option>
+                            <option value="Rodotrem">Rodotrem</option>
+                            <option value="VUC">VUC</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="processDock" class="form-label">Doca</label>
+                        <select class="form-select" id="processDock" required>
+                            <option value="">Selecione...</option>
+                            <option value="1">Doca 1</option>
+                            <option value="2">Doca 2</option>
+                            <option value="3">Doca 3</option>
+                            <option value="4">Doca 4</option>
+                            <option value="5">Doca 5</option>
+                            <option value="6">Doca 6</option>
+                            <option value="7">Doca 7</option>
+                            <option value="8">Doca 8</option>
+                            <option value="9">Doca 9</option>
+                            <option value="10">Doca 10</option>
+                            <option value="11">Doca 11</option>
+                            <option value="12">Doca 12</option>
+                            <option value="13">Doca 13</option>
+                            <option value="14">Doca 14</option>
+                            <option value="15">Doca 15</option>
+                        </select>
+                    </div>
+                    
+                    <div class="qr-scanner-container">
+                        <div class="qr-scanner" id="qrScannerNew">
+                            <video class="qr-video" id="qrVideoNew" playsinline></video>
+                            <button class="btn btn-sm btn-secondary mt-2" id="switchCameraBtn" style="display: none;">
+                                <i class="fas fa-sync-alt"></i> Trocar Câmera
+                            </button>
+                        </div>
+                        <button class="btn btn-outline-primary" id="startScannerBtn">
+                            <i class="fas fa-qrcode"></i> Ler QR Code do Operador
+                        </button>
+                        <div class="qr-result" id="qrResultNew">
+                            Operador: <strong id="operatorName"></strong>
+                        </div>
+                    </div>
                 </div>
-
-                <div id="stepOperatorInfo" style="display: none; margin: 10px 0;">
-                    Operador: <strong id="stepOperatorName"></strong>
-                </div>
-
-                <div id="helpersList" style="display: none; margin: 10px 0; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
-                    <h3>Ajudantes:</h3>
-                    <!-- Lista de ajudantes será gerada aqui -->
-                </div>
-
-                <div class="modal-actions">
-                    <button class="btn secondary-btn" id="cancelStepBtn">Cancelar</button>
-                    <button class="btn primary-btn" id="confirmStepBtn" disabled>Confirmar</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmProcessBtn" disabled>Iniciar Processo</button>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
+    
+    <!-- Modal Etapa -->
+    <div class="modal fade" id="stageModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="stageModalTitle">Etapa do Processo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="process-info mb-3">
+                        <div><strong>DT:</strong> <span id="modalDT"></span></div>
+                        <div><strong>Veículo:</strong> <span id="modalVehicle"></span></div>
+                        <div><strong>Doca:</strong> <span id="modalDock"></span></div>
+                    </div>
+                    
+                    <div class="qr-scanner-container">
+                        <div class="qr-scanner" id="qrScannerStage">
+                            <video class="qr-video" id="qrVideoStage" playsinline></video>
+                            <button class="btn btn-sm btn-secondary mt-2" id="switchStageCameraBtn" style="display: none;">
+                                <i class="fas fa-sync-alt"></i> Trocar Câmera
+                            </button>
+                        </div>
+                        <button class="btn btn-outline-primary" id="startStageScannerBtn">
+                            <i class="fas fa-qrcode"></i> <span id="scanActionText">Ler QR Code</span>
+                        </button>
+                        <div class="qr-result" id="qrResultStage">
+                            Operador: <strong id="stageOperatorName"></strong>
+                        </div>
+                    </div>
+                    
+                    <div id="helpersContainer" style="display: none;">
+                        <h6>Ajudantes:</h6>
+                        <div class="helpers-list" id="helpersList"></div>
+                        <button class="btn btn-sm btn-outline-success mt-2" id="addHelperBtn">
+                            <i class="fas fa-plus"></i> Adicionar Ajudante
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmStageBtn" disabled>Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <!-- Firebase SDK -->
+    <!-- Firebase e QR Scanner -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qr-scanner@1.4.1/qr-scanner.min.js"></script>
     
-    <!-- QR Code Scanner -->
-    <script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
-    
-    <!-- App Script -->
     <script>
         // Configuração do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAROtfqwCp2i2DVqqQDge6QueiNbmlPzuI",
             authDomain: "produtividade-pa.firebaseapp.com",
+            databaseURL: "https://produtividade-pa-default-rtdb.firebaseio.com",
             projectId: "produtividade-pa",
             storageBucket: "produtividade-pa.appspot.com",
             messagingSenderId: "455228218660",
@@ -669,823 +380,561 @@
 
         // Inicializa o Firebase
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
-        // Mapeamento das etapas
-        const STAGES = {
-            1: { name: 'Vistoria', needsHelpers: false, needsOperator: true },
-            2: { name: 'Abertura', needsHelpers: true, needsOperator: false },
-            3: { name: 'Separação', needsHelpers: false, needsOperator: true },
-            4: { name: 'Faturamento', needsHelpers: false, needsOperator: true },
-            5: { name: 'Carregamento', needsHelpers: false, needsOperator: true },
-            6: { name: 'Fechamento', needsHelpers: true, needsOperator: false }
-        };
-
+        const database = firebase.database();
+        
         // Variáveis globais
-        let currentUser = null;
-        let qrScanner = null;
-        let stepQrScanner = null;
-        let currentProcesses = [];
-        let currentStepModalProcessId = null;
-        let currentStepModalStage = null;
+        let processes = {};
+        let currentProcessId = null;
+        let currentStage = null;
+        let isStartingStage = true;
+        let qrScannerNew = null;
+        let qrScannerStage = null;
         let cameras = [];
         let currentCameraIndex = 0;
-        let currentStepCameraIndex = 0;
-        let isStartingStep = true;
-        let currentStepStarted = false;
-
-        // Elementos da página
-        const elements = {
-            menuToggle: document.getElementById('menuToggle'),
-            overlay: document.getElementById('overlay'),
-            sidebar: document.getElementById('sidebar'),
-            startProcessBtn: document.getElementById('startProcessBtn'),
-            operationsGrid: document.getElementById('operationsGrid'),
-            startProcessModal: document.getElementById('startProcessModal'),
-            processStepModal: document.getElementById('processStepModal'),
-            currentUser: document.getElementById('currentUser'),
-            
-            // Modal de Início
-            qrScanner: document.getElementById('qrScanner'),
-            startScannerBtn: document.getElementById('startScannerBtn'),
-            switchCameraBtn: document.getElementById('switchCameraBtn'),
-            operatorName: document.getElementById('operatorName'),
-            operatorInfo: document.getElementById('operatorInfo'),
-            dtNumber: document.getElementById('dtNumber'),
-            vehicleType: document.getElementById('vehicleType'),
-            dockNumber: document.getElementById('dockNumber'),
-            confirmProcessBtn: document.getElementById('confirmProcessBtn'),
-            cancelProcessBtn: document.getElementById('cancelProcessBtn'),
-            scanFeedback: document.getElementById('scanFeedback'),
-            
-            // Modal de Etapa
-            processStepTitle: document.getElementById('processStepTitle'),
-            processDtNumber: document.getElementById('processDtNumber'),
-            processVehicleType: document.getElementById('processVehicleType'),
-            processDockNumber: document.getElementById('processDockNumber'),
-            stepQrScanner: document.getElementById('stepQrScanner'),
-            startStepScannerBtn: document.getElementById('startStepScannerBtn'),
-            scanActionText: document.getElementById('scanActionText'),
-            switchStepCameraBtn: document.getElementById('switchStepCameraBtn'),
-            stepOperatorName: document.getElementById('stepOperatorName'),
-            stepOperatorInfo: document.getElementById('stepOperatorInfo'),
-            helpersList: document.getElementById('helpersList'),
-            confirmStepBtn: document.getElementById('confirmStepBtn'),
-            cancelStepBtn: document.getElementById('cancelStepBtn'),
-            processStepFeedback: document.getElementById('processStepFeedback')
+        let currentStageCameraIndex = 0;
+        let helpers = [];
+        
+        // Mapeamento das etapas
+        const STAGES = {
+            1: { name: 'Vistoria', needsHelpers: false },
+            2: { name: 'Abertura', needsHelpers: true },
+            3: { name: 'Separação', needsHelpers: false },
+            4: { name: 'Faturamento', needsHelpers: false },
+            5: { name: 'Carregamento', needsHelpers: false },
+            6: { name: 'Fechamento', needsHelpers: true }
         };
-
-        // Inicialização do dashboard
+        
+        // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
-            // Verificar autenticação
-            firebase.auth().onAuthStateChanged(user => {
-                if (!user) {
-                    window.location.href = '../index.html';
-                } else {
-                    currentUser = user;
-                    elements.currentUser.textContent = user.displayName || user.email;
-                    initializeProcesses();
-                    setupEventListeners();
-                }
-            });
+            initElements();
+            setupEventListeners();
+            loadProcesses();
+            startGlobalTimer();
         });
-
-        function initializeProcesses() {
-            if (window.processesInterval) {
-                clearInterval(window.processesInterval);
-            }
-
-            db.ref('processes').on('value', snapshot => {
-                currentProcesses = [];
-                elements.operationsGrid.innerHTML = '';
+        
+        function initElements() {
+            // Elementos do modal novo processo
+            window.newProcessModal = new bootstrap.Modal(document.getElementById('newProcessModal'));
+            window.stageModal = new bootstrap.Modal(document.getElementById('stageModal'));
+        }
+        
+        function setupEventListeners() {
+            // Novo processo
+            document.getElementById('newProcessBtn').addEventListener('click', showNewProcessModal);
+            document.getElementById('startScannerBtn').addEventListener('click', startNewProcessScanner);
+            document.getElementById('switchCameraBtn').addEventListener('click', switchNewProcessCamera);
+            document.getElementById('confirmProcessBtn').addEventListener('click', createNewProcess);
+            
+            // Etapa do processo
+            document.getElementById('startStageScannerBtn').addEventListener('click', startStageScanner);
+            document.getElementById('switchStageCameraBtn').addEventListener('click', switchStageCamera);
+            document.getElementById('addHelperBtn').addEventListener('click', addHelper);
+            document.getElementById('confirmStageBtn').addEventListener('click', confirmStageAction);
+            
+            // Fechar modais
+            document.getElementById('newProcessModal').addEventListener('hidden.bs.modal', resetNewProcessModal);
+            document.getElementById('stageModal').addEventListener('hidden.bs.modal', resetStageModal);
+        }
+        
+        function loadProcesses() {
+            database.ref('processes').on('value', (snapshot) => {
+                processes = snapshot.val() || {};
+                renderProcesses();
                 
-                snapshot.forEach(childSnapshot => {
-                    const process = { id: childSnapshot.key, ...childSnapshot.val() };
-                    if (process.status !== 'completed') {
-                        currentProcesses.push(process);
-                        renderProcessCard(process);
-                    }
-                });
-                
-                startProcessesTimer();
+                // Mostra/oculta mensagem de nenhum processo
+                document.getElementById('noProcesses').style.display = 
+                    Object.keys(processes).length === 0 ? 'block' : 'none';
             });
         }
-
-        function renderProcessCard(process) {
-            const card = document.createElement('div');
-            card.className = 'operation-card';
-            card.dataset.id = process.id;
-
-            const currentStage = getCurrentStage(process);
-            const elapsedTime = calculateElapsedTime(process);
-            const stageTimes = calculateStageTimes(process);
+        
+        function renderProcesses() {
+            const container = document.getElementById('processesContainer');
+            container.innerHTML = '';
             
-            card.innerHTML = `
-                <div class="operation-card-header">
-                    <div class="operation-card-title">Doca ${process.dock}</div>
-                    <div class="operation-status ${getStatusClass(currentStage)}">${STAGES[currentStage].name}</div>
-                    <div class="operation-stage">Etapa ${currentStage}</div>
-                </div>
+            for (const processId in processes) {
+                const process = processes[processId];
+                const currentStage = getCurrentStage(process);
+                const elapsedTime = calculateElapsedTime(process);
                 
-                <div class="operation-card-time timer">${formatTime(elapsedTime)}</div>
+                const processElement = document.createElement('div');
+                processElement.className = 'col-md-6 col-lg-4';
+                processElement.innerHTML = `
+                    <div class="process-card">
+                        <div class="process-header">
+                            <h3 class="process-title">Processo ${process.dtNumber}</h3>
+                            <span class="process-status">${STAGES[currentStage].name}</span>
+                        </div>
+                        <div class="process-body">
+                            <div class="process-info">
+                                <div><strong>Veículo:</strong> ${process.vehicleType}</div>
+                                <div><strong>Doca:</strong> <span class="dock-badge">Doca ${process.dock}</span></div>
+                                <div><strong>Operador:</strong> ${process.operatorName || '-'}</div>
+                            </div>
+                            
+                            <div class="process-timer timer">${formatTime(elapsedTime)}</div>
+                            
+                            <div class="stage-container" id="stages-${processId}">
+                                ${renderStages(process, processId)}
+                            </div>
+                        </div>
+                    </div>
+                `;
                 
-                <div class="operation-card-details">
-                    <div>DT: ${process.dtNumber}</div>
-                    <div>Veículo: ${process.vehicleType}</div>
-                    <div>Operador: ${process.operatorName || '-'}</div>
-                </div>
-                
-                <div class="process-steps">
-                    ${renderProcessSteps(process, currentStage)}
-                </div>
-                
-                <div class="time-details">
-                    ${renderTimeDetails(stageTimes)}
-                </div>
-            `;
-
-            // Se já existe um card com esse ID, substitui
-            const existingCard = document.querySelector(`.operation-card[data-id="${process.id}"]`);
-            if (existingCard) {
-                existingCard.replaceWith(card);
-            } else {
-                elements.operationsGrid.appendChild(card);
+                container.appendChild(processElement);
             }
-
+            
             // Adiciona eventos aos botões das etapas
-            const startButtons = card.querySelectorAll('.start-stage-btn');
-            startButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const stage = parseInt(button.dataset.stage);
-                    isStartingStep = true;
-                    showProcessStepModal(process.id, stage);
-                });
-            });
-
-            const endButtons = card.querySelectorAll('.end-stage-btn');
-            endButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const stage = parseInt(button.dataset.stage);
-                    isStartingStep = false;
-                    showProcessStepModal(process.id, stage);
-                });
-            });
-        }
-
-        function renderProcessSteps(process, currentStage) {
-            return Object.entries(STAGES).map(([stageId, stageData]) => {
-                const stageNum = parseInt(stageId);
-                const isCompleted = process[`stage${stageId}End`] !== undefined;
-                const isActive = currentStage === stageNum;
-                const isStarted = process[`stage${stageId}Start`] !== undefined;
+            for (const processId in processes) {
+                const process = processes[processId];
+                const currentStage = getCurrentStage(process);
                 
-                let stageContent = `<div class="process-step ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}">`;
-                stageContent += `<h4>${stageId}. ${stageData.name}</h4>`;
-                
-                if (isCompleted) {
-                    const startTime = process[`stage${stageId}Start`];
-                    const endTime = process[`stage${stageId}End`];
-                    const duration = formatTime(Math.floor((endTime - startTime) / 1000));
-                    stageContent += `<div class="stage-time-info">
-                        <div>Tempo: ${duration}</div>
-                    </div>`;
-                } else if (isActive) {
-                    if (isStarted) {
-                        // Etapa iniciada - mostrar botão de finalizar
-                        stageContent += `<div class="step-actions">
-                            <button class="btn danger-btn end-stage-btn" data-stage="${stageId}">
-                                Finalizar ${stageData.name}
-                            </button>
-                        </div>`;
-                    } else {
-                        // Etapa não iniciada - mostrar botão de iniciar
-                        stageContent += `<div class="step-actions">
-                            <button class="btn primary-btn start-stage-btn" data-stage="${stageId}">
-                                Iniciar ${stageData.name}
-                            </button>
-                        </div>`;
+                for (let stage = 1; stage <= 6; stage++) {
+                    const startBtn = document.getElementById(`start-stage-${processId}-${stage}`);
+                    const endBtn = document.getElementById(`end-stage-${processId}-${stage}`);
+                    
+                    if (startBtn) {
+                        startBtn.addEventListener('click', () => {
+                            openStageModal(processId, stage, true);
+                        });
+                    }
+                    
+                    if (endBtn) {
+                        endBtn.addEventListener('click', () => {
+                            openStageModal(processId, stage, false);
+                        });
                     }
                 }
-                
-                stageContent += `</div>`;
-                return stageContent;
-            }).join('');
+            }
         }
-
-        function renderTimeDetails(stageTimes) {
-            let html = '<strong>Detalhes de Tempo:</strong>';
+        
+        function renderStages(process, processId) {
+            let html = '';
+            const currentStage = getCurrentStage(process);
             
-            // Tempo total
-            html += `<span>Total: ${formatTime(stageTimes.total)}</span>`;
-            
-            // Tempos por etapa
-            stageTimes.stages.forEach((stage, index) => {
-                if (stage.duration > 0) {
-                    html += `<span>${STAGES[index+1].name}: ${formatTime(stage.duration)}</span>`;
-                }
-            });
-            
-            // Tempos entre etapas
-            stageTimes.waitTimes.forEach((waitTime, index) => {
-                if (waitTime > 0) {
-                    html += `<span>Entre ${STAGES[index+1].name} e ${STAGES[index+2].name}: ${formatTime(waitTime)}</span>`;
-                }
-            });
+            for (let stage = 1; stage <= 6; stage++) {
+                const stageData = process[`stage${stage}`] || {};
+                const isCompleted = stage < currentStage;
+                const isActive = stage === currentStage;
+                const isStarted = stageData.startTime;
+                
+                html += `
+                    <div class="stage ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}">
+                        <span class="stage-number">${stage}</span>
+                        <div class="stage-title">
+                            <span>${STAGES[stage].name}</span>
+                            ${stageData.duration ? `<span class="text-success">${formatTime(stageData.duration)}</span>` : ''}
+                        </div>
+                        
+                        ${isActive && !isStarted ? `
+                            <div class="stage-actions">
+                                <button class="btn btn-sm btn-primary" id="start-stage-${processId}-${stage}">
+                                    <i class="fas fa-play"></i> Iniciar
+                                </button>
+                            </div>
+                        ` : ''}
+                        
+                        ${isActive && isStarted ? `
+                            <div class="stage-actions">
+                                <button class="btn btn-sm btn-danger" id="end-stage-${processId}-${stage}">
+                                    <i class="fas fa-stop"></i> Finalizar
+                                </button>
+                            </div>
+                        ` : ''}
+                        
+                        ${isCompleted ? `
+                            <div class="stage-time">
+                                ${stageData.operator ? `<div>Operador: ${stageData.operator}</div>` : ''}
+                                ${stageData.helpers ? `<div>Ajudantes: ${stageData.helpers.join(', ')}</div>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
             
             return html;
         }
-
-        function calculateStageTimes(process) {
-            const result = {
-                total: 0,
-                stages: Array(6).fill().map(() => ({ duration: 0 })),
-                waitTimes: Array(5).fill(0)
+        
+        function showNewProcessModal() {
+            resetNewProcessModal();
+            window.newProcessModal.show();
+        }
+        
+        function resetNewProcessModal() {
+            document.getElementById('processDT').value = '';
+            document.getElementById('processVehicle').value = '';
+            document.getElementById('processDock').value = '';
+            document.getElementById('operatorName').textContent = '';
+            document.getElementById('qrResultNew').style.display = 'none';
+            document.getElementById('confirmProcessBtn').disabled = true;
+            
+            if (qrScannerNew) {
+                qrScannerNew.stop();
+                qrScannerNew = null;
+            }
+            
+            document.getElementById('qrScannerNew').style.display = 'none';
+            document.getElementById('switchCameraBtn').style.display = 'none';
+        }
+        
+        function startNewProcessScanner() {
+            if (qrScannerNew) {
+                qrScannerNew.stop();
+            }
+            
+            document.getElementById('qrScannerNew').style.display = 'block';
+            
+            qrScannerNew = new QrScanner(
+                document.getElementById('qrVideoNew'),
+                result => handleQrResult(result, 'new'),
+                {
+                    highlightScanRegion: true,
+                    highlightCodeOutline: true,
+                }
+            );
+            
+            QrScanner.listCameras(true).then(availableCameras => {
+                cameras = availableCameras;
+                if (cameras.length > 0) {
+                    currentCameraIndex = 0;
+                    qrScannerNew.setCamera(cameras[currentCameraIndex].id);
+                    document.getElementById('switchCameraBtn').style.display = cameras.length > 1 ? 'block' : 'none';
+                }
+            });
+            
+            qrScannerNew.start();
+        }
+        
+        function switchNewProcessCamera() {
+            if (cameras.length < 2) return;
+            
+            currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
+            qrScannerNew.setCamera(cameras[currentCameraIndex].id);
+        }
+        
+        function handleQrResult(result, type) {
+            try {
+                const data = JSON.parse(result.data);
+                
+                if (type === 'new') {
+                    document.getElementById('operatorName').textContent = data.nome;
+                    document.getElementById('qrResultNew').style.display = 'block';
+                    document.getElementById('confirmProcessBtn').disabled = false;
+                    
+                    if (qrScannerNew) {
+                        qrScannerNew.stop();
+                        document.getElementById('qrScannerNew').style.display = 'none';
+                    }
+                } else if (type === 'stage') {
+                    if (STAGES[currentStage].needsHelpers && isStartingStage) {
+                        addHelperToList(data.nome);
+                    } else {
+                        document.getElementById('stageOperatorName').textContent = data.nome;
+                        document.getElementById('qrResultStage').style.display = 'block';
+                        document.getElementById('confirmStageBtn').disabled = false;
+                        
+                        if (qrScannerStage) {
+                            qrScannerStage.stop();
+                            document.getElementById('qrScannerStage').style.display = 'none';
+                        }
+                    }
+                }
+            } catch (e) {
+                alert('QR Code inválido. Certifique-se de escanear um código válido.');
+            }
+        }
+        
+        function createNewProcess() {
+            const dt = document.getElementById('processDT').value.trim();
+            const vehicleType = document.getElementById('processVehicle').value;
+            const dock = document.getElementById('processDock').value;
+            const operatorName = document.getElementById('operatorName').textContent;
+            
+            if (!dt || !vehicleType || !dock || !operatorName) {
+                alert('Preencha todos os campos obrigatórios!');
+                return;
+            }
+            
+            // Verifica se a doca já está em uso
+            for (const processId in processes) {
+                if (processes[processId].dock === dock && getCurrentStage(processes[processId]) <= 6) {
+                    alert(`Doca ${dock} já está em uso pelo processo ${processes[processId].dtNumber}`);
+                    return;
+                }
+            }
+            
+            const newProcess = {
+                dtNumber: dt,
+                vehicleType: vehicleType,
+                dock: dock,
+                operatorName: operatorName,
+                status: 'in_progress',
+                createdAt: firebase.database.ServerValue.TIMESTAMP,
+                stage1: {
+                    startTime: firebase.database.ServerValue.TIMESTAMP
+                }
             };
             
-            const now = Date.now();
-            const currentStage = getCurrentStage(process);
-            
-            // Calcula tempos das etapas
-            for (let i = 1; i <= currentStage; i++) {
-                const start = process[`stage${i}Start`] || now;
-                const end = i < currentStage ? (process[`stage${i}End`] || now) : now;
-                result.stages[i-1].duration = Math.floor((end - start) / 1000);
-                result.total += result.stages[i-1].duration;
-            }
-            
-            // Calcula tempos de espera entre etapas
-            for (let i = 1; i < currentStage; i++) {
-                const prevEnd = process[`stage${i}End`] || now;
-                const nextStart = process[`stage${i+1}Start`] || now;
-                result.waitTimes[i-1] = Math.floor((nextStart - prevEnd) / 1000);
-                result.total += result.waitTimes[i-1];
-            }
-            
-            return result;
+            database.ref('processes').push(newProcess)
+                .then(() => {
+                    window.newProcessModal.hide();
+                })
+                .catch(error => {
+                    console.error('Erro ao criar processo:', error);
+                    alert('Erro ao criar processo. Tente novamente.');
+                });
         }
-
+        
+        function openStageModal(processId, stage, isStart) {
+            currentProcessId = processId;
+            currentStage = stage;
+            isStartingStage = isStart;
+            
+            const process = processes[processId];
+            
+            document.getElementById('modalDT').textContent = process.dtNumber;
+            document.getElementById('modalVehicle').textContent = process.vehicleType;
+            document.getElementById('modalDock').textContent = `Doca ${process.dock}`;
+            
+            if (isStart) {
+                document.getElementById('stageModalTitle').textContent = `Iniciar ${STAGES[stage].name}`;
+                document.getElementById('scanActionText').textContent = STAGES[stage].needsHelpers ? 
+                    'Adicionar Ajudante' : 'Ler QR Code do Operador';
+                document.getElementById('confirmStageBtn').textContent = 'Iniciar Etapa';
+            } else {
+                document.getElementById('stageModalTitle').textContent = `Finalizar ${STAGES[stage].name}`;
+                document.getElementById('scanActionText').textContent = 'Ler QR Code do Operador';
+                document.getElementById('confirmStageBtn').textContent = 'Finalizar Etapa';
+            }
+            
+            if (STAGES[stage].needsHelpers && isStart) {
+                document.getElementById('helpersContainer').style.display = 'block';
+                helpers = [];
+                document.getElementById('helpersList').innerHTML = '';
+            } else {
+                document.getElementById('helpersContainer').style.display = 'none';
+            }
+            
+            resetStageModal();
+            window.stageModal.show();
+        }
+        
+        function resetStageModal() {
+            document.getElementById('stageOperatorName').textContent = '';
+            document.getElementById('qrResultStage').style.display = 'none';
+            document.getElementById('confirmStageBtn').disabled = true;
+            
+            if (qrScannerStage) {
+                qrScannerStage.stop();
+                qrScannerStage = null;
+            }
+            
+            document.getElementById('qrScannerStage').style.display = 'none';
+            document.getElementById('switchStageCameraBtn').style.display = 'none';
+        }
+        
+        function startStageScanner() {
+            if (qrScannerStage) {
+                qrScannerStage.stop();
+            }
+            
+            document.getElementById('qrScannerStage').style.display = 'block';
+            
+            qrScannerStage = new QrScanner(
+                document.getElementById('qrVideoStage'),
+                result => handleQrResult(result, 'stage'),
+                {
+                    highlightScanRegion: true,
+                    highlightCodeOutline: true,
+                }
+            );
+            
+            QrScanner.listCameras(true).then(availableCameras => {
+                if (availableCameras.length > 0) {
+                    currentStageCameraIndex = 0;
+                    qrScannerStage.setCamera(availableCameras[currentStageCameraIndex].id);
+                    document.getElementById('switchStageCameraBtn').style.display = 
+                        availableCameras.length > 1 ? 'block' : 'none';
+                }
+            });
+            
+            qrScannerStage.start();
+        }
+        
+        function switchStageCamera() {
+            if (cameras.length < 2) return;
+            
+            currentStageCameraIndex = (currentStageCameraIndex + 1) % cameras.length;
+            qrScannerStage.setCamera(cameras[currentStageCameraIndex].id);
+        }
+        
+        function addHelper() {
+            const helperName = prompt('Digite o nome do ajudante:');
+            if (helperName && helperName.trim()) {
+                helpers.push(helperName.trim());
+                updateHelpersList();
+            }
+        }
+        
+        function addHelperToList(helperName) {
+            helpers.push(helperName);
+            updateHelpersList();
+        }
+        
+        function updateHelpersList() {
+            const helpersList = document.getElementById('helpersList');
+            helpersList.innerHTML = '';
+            
+            helpers.forEach((helper, index) => {
+                const helperItem = document.createElement('div');
+                helperItem.className = 'helper-item';
+                helperItem.innerHTML = `
+                    <span>${helper}</span>
+                    <button class="btn btn-sm btn-outline-danger remove-helper" data-index="${index}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                helpersList.appendChild(helperItem);
+            });
+            
+            // Adiciona eventos aos botões de remover
+            document.querySelectorAll('.remove-helper').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const index = parseInt(e.target.closest('button').dataset.index);
+                    helpers.splice(index, 1);
+                    updateHelpersList();
+                });
+            });
+            
+            document.getElementById('confirmStageBtn').disabled = helpers.length === 0;
+        }
+        
+        function confirmStageAction() {
+            const processRef = database.ref(`processes/${currentProcessId}`);
+            
+            processRef.once('value').then(snapshot => {
+                const process = snapshot.val();
+                const updates = {};
+                
+                if (isStartingStage) {
+                    // Iniciar etapa
+                    updates[`stage${currentStage}/startTime`] = firebase.database.ServerValue.TIMESTAMP;
+                    
+                    if (STAGES[currentStage].needsHelpers) {
+                        updates[`stage${currentStage}/helpers`] = helpers;
+                    } else {
+                        updates[`stage${currentStage}/operator`] = 
+                            document.getElementById('stageOperatorName').textContent;
+                    }
+                } else {
+                    // Finalizar etapa
+                    const startTime = process[`stage${currentStage}`].startTime;
+                    const endTime = Date.now();
+                    const duration = Math.floor((endTime - startTime) / 1000);
+                    
+                    updates[`stage${currentStage}/endTime`] = endTime;
+                    updates[`stage${currentStage}/duration`] = duration;
+                    updates[`stage${currentStage}/operator`] = 
+                        document.getElementById('stageOperatorName').textContent;
+                    
+                    // Se não for a última etapa, inicia a próxima
+                    if (currentStage < 6) {
+                        updates[`stage${currentStage + 1}/startTime`] = firebase.database.ServerValue.TIMESTAMP;
+                    } else {
+                        updates.status = 'completed';
+                        updates.completedAt = firebase.database.ServerValue.TIMESTAMP;
+                        moveToHistory(currentProcessId, process);
+                    }
+                }
+                
+                return processRef.update(updates);
+            })
+            .then(() => {
+                window.stageModal.hide();
+            })
+            .catch(error => {
+                console.error('Erro ao atualizar etapa:', error);
+                alert('Erro ao atualizar etapa. Tente novamente.');
+            });
+        }
+        
+        function moveToHistory(processId, process) {
+            const historyRef = database.ref('history').push();
+            
+            const historyData = {
+                processId: processId,
+                dtNumber: process.dtNumber,
+                vehicleType: process.vehicleType,
+                dock: process.dock,
+                operator: process.operatorName,
+                startTime: process.stage1.startTime,
+                completedAt: firebase.database.ServerValue.TIMESTAMP,
+                stages: {}
+            };
+            
+            // Copia informações de cada etapa
+            for (let i = 1; i <= 6; i++) {
+                historyData.stages[i] = {
+                    name: STAGES[i].name,
+                    startTime: process[`stage${i}`].startTime,
+                    endTime: process[`stage${i}`].endTime,
+                    duration: process[`stage${i}`].duration,
+                    operator: process[`stage${i}`].operator,
+                    helpers: process[`stage${i}`].helpers
+                };
+            }
+            
+            historyRef.set(historyData)
+                .then(() => {
+                    database.ref(`processes/${processId}`).remove();
+                })
+                .catch(error => {
+                    console.error('Erro ao mover para histórico:', error);
+                });
+        }
+        
         function getCurrentStage(process) {
             for (let i = 1; i <= 6; i++) {
-                if (!process[`stage${i}End`]) {
+                if (!process[`stage${i}`] || !process[`stage${i}`].endTime) {
                     return i;
                 }
             }
             return 6;
         }
-
-        function getStatusClass(stage) {
-            const statusClasses = {
-                1: 'loading',
-                2: 'awaiting_binding',
-                3: 'binding',
-                4: 'binding',
-                5: 'binding',
-                6: 'completed'
-            };
-            return statusClasses[stage] || '';
-        }
-
-        function setupEventListeners() {
-            // Menu mobile
-            elements.menuToggle.addEventListener('click', toggleSidebar);
-            elements.overlay.addEventListener('click', toggleSidebar);
+        
+        function calculateElapsedTime(process) {
+            const currentStage = getCurrentStage(process);
+            const now = Date.now();
+            let totalSeconds = 0;
             
-            // Processo
-            elements.startProcessBtn.addEventListener('click', () => {
-                resetStartProcessForm();
-                showModal(elements.startProcessModal);
-            });
-            
-            // Scanner
-            elements.startScannerBtn.addEventListener('click', startScanner);
-            elements.switchCameraBtn.addEventListener('click', switchCamera);
-            elements.cancelProcessBtn.addEventListener('click', () => {
-                hideModal(elements.startProcessModal);
-                stopScanner();
-            });
-            elements.confirmProcessBtn.addEventListener('click', confirmStartProcess);
-            
-            // Etapa
-            elements.startStepScannerBtn.addEventListener('click', startStepScanner);
-            elements.switchStepCameraBtn.addEventListener('click', switchStepCamera);
-            elements.cancelStepBtn.addEventListener('click', () => {
-                hideModal(elements.processStepModal);
-                stopStepScanner();
-            });
-            elements.confirmStepBtn.addEventListener('click', confirmProcessStep);
-            
-            // Logout
-            document.getElementById('logoutBtn').addEventListener('click', () => {
-                firebase.auth().signOut().then(() => {
-                    window.location.href = '../index.html';
-                });
-            });
-            
-            // Fechar modais
-            document.querySelectorAll('.close-modal').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const modal = btn.closest('.modal');
-                    hideModal(modal);
-                    
-                    if (modal.id === 'startProcessModal') {
-                        stopScanner();
-                    } else {
-                        stopStepScanner();
-                    }
-                });
-            });
-        }
-
-        function toggleSidebar() {
-            elements.sidebar.classList.toggle('active');
-            elements.overlay.style.display = elements.sidebar.classList.contains('active') ? 'block' : 'none';
-        }
-
-        function showModal(modal) {
-            modal.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-        }
-
-        function hideModal(modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-
-        function findRearCamera(cameras) {
-            // Prioriza câmera traseira
-            const rearCameraIndex = cameras.findIndex(cam => 
-                cam.name.toLowerCase().includes('rear') || 
-                cam.name.toLowerCase().includes('traseira') || 
-                (cam.facing && cam.facing === 'environment')
-            );
-            
-            return rearCameraIndex >= 0 ? cameras[rearCameraIndex] : cameras[0];
-        }
-
-        function startScanner() {
-            stopScanner();
-            
-            elements.qrScanner.style.display = 'block';
-            qrScanner = new Instascan.Scanner({
-                video: elements.qrScanner,
-                mirror: false,
-                scanPeriod: 1,
-                backgroundScan: false
-            });
-            
-            qrScanner.addListener('scan', content => {
-                handleQrScan(content, 'start');
-            });
-            
-            Instascan.Camera.getCameras()
-                .then(cameraList => {
-                    cameras = cameraList;
-                    if (cameras.length === 0) {
-                        throw new Error('Nenhuma câmera encontrada. Verifique as permissões.');
-                    }
-                    
-                    // Usa a câmera traseira se disponível
-                    const rearCamera = findRearCamera(cameras);
-                    currentCameraIndex = cameras.indexOf(rearCamera);
-                    
-                    elements.switchCameraBtn.style.display = cameras.length > 1 ? 'block' : 'none';
-                    return qrScanner.start(rearCamera);
-                })
-                .then(() => {
-                    showFeedback('Scanner iniciado com sucesso', 'success', 'scanFeedback');
-                })
-                .catch(error => {
-                    console.error('Erro ao iniciar scanner:', error);
-                    let errorMessage = 'Erro ao acessar câmera: ' + error.message;
-                    if (error.message.includes('NotAllowedError')) {
-                        errorMessage = 'Permissão para acessar a câmera foi negada. Por favor, permita o acesso à câmera nas configurações do seu navegador.';
-                    }
-                    showFeedback(errorMessage, 'error', 'scanFeedback');
-                });
-        }
-
-        function switchCamera() {
-            if (!qrScanner || cameras.length < 2) return;
-            
-            currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
-            qrScanner.start(cameras[currentCameraIndex])
-                .then(() => {
-                    showFeedback(`Câmera trocada para ${cameras[currentCameraIndex].name}`, 'info', 'scanFeedback');
-                })
-                .catch(error => {
-                    console.error('Erro ao trocar câmera:', error);
-                    showFeedback('Erro ao trocar câmera', 'error', 'scanFeedback');
-                });
-        }
-
-        function startStepScanner() {
-            stopStepScanner();
-            
-            elements.stepQrScanner.style.display = 'block';
-            stepQrScanner = new Instascan.Scanner({
-                video: elements.stepQrScanner,
-                mirror: false,
-                scanPeriod: 1,
-                backgroundScan: false
-            });
-            
-            stepQrScanner.addListener('scan', content => {
-                handleQrScan(content, 'step');
-            });
-            
-            Instascan.Camera.getCameras()
-                .then(cameraList => {
-                    if (cameraList.length === 0) {
-                        throw new Error('Nenhuma câmera encontrada');
-                    }
-                    
-                    // Usa a câmera traseira se disponível
-                    const rearCamera = findRearCamera(cameraList);
-                    currentStepCameraIndex = cameraList.indexOf(rearCamera);
-                    
-                    elements.switchStepCameraBtn.style.display = cameraList.length > 1 ? 'block' : 'none';
-                    return stepQrScanner.start(rearCamera);
-                })
-                .then(() => {
-                    showFeedback('Scanner iniciado com sucesso', 'success', 'processStepFeedback');
-                })
-                .catch(error => {
-                    console.error('Erro ao iniciar scanner:', error);
-                    showFeedback('Erro ao acessar câmera: ' + error.message, 'error', 'processStepFeedback');
-                });
-        }
-
-        function switchStepCamera() {
-            if (!stepQrScanner || cameras.length < 2) return;
-            
-            currentStepCameraIndex = (currentStepCameraIndex + 1) % cameras.length;
-            stepQrScanner.start(cameras[currentStepCameraIndex])
-                .then(() => {
-                    showFeedback(`Câmera trocada para ${cameras[currentStepCameraIndex].name}`, 'info', 'processStepFeedback');
-                })
-                .catch(error => {
-                    console.error('Erro ao trocar câmera:', error);
-                    showFeedback('Erro ao trocar câmera', 'error', 'processStepFeedback');
-                });
-        }
-
-        function stopScanner() {
-            if (qrScanner) {
-                qrScanner.stop();
-                qrScanner = null;
-            }
-            elements.qrScanner.style.display = 'none';
-            elements.switchCameraBtn.style.display = 'none';
-        }
-
-        function stopStepScanner() {
-            if (stepQrScanner) {
-                stepQrScanner.stop();
-                stepQrScanner = null;
-            }
-            elements.stepQrScanner.style.display = 'none';
-            elements.switchStepCameraBtn.style.display = 'none';
-        }
-
-        function handleQrScan(content, type) {
-            // Simplesmente pega o conteúdo do QR Code e armazena
-            const employeeName = content;
-            
-            if (type === 'start') {
-                elements.operatorName.textContent = employeeName;
-                elements.operatorInfo.style.display = 'block';
-                elements.confirmProcessBtn.disabled = false;
-                showFeedback('Operador registrado com sucesso!', 'success', 'scanFeedback');
-                stopScanner();
-            } else {
-                if (STAGES[currentStepModalStage].needsHelpers && isStartingStep) {
-                    addHelperToList(employeeName);
-                } else {
-                    elements.stepOperatorName.textContent = employeeName;
-                    elements.stepOperatorInfo.style.display = 'block';
-                    elements.confirmStepBtn.disabled = false;
-                    showFeedback('Operador registrado com sucesso!', 'success', 'processStepFeedback');
-                    stopStepScanner();
-                }
-            }
-        }
-
-        function addHelperToList(employeeName) {
-            const existingHelper = Array.from(elements.helpersList.children).find(item => 
-                item.textContent.includes(employeeName)
-            );
-            
-            if (existingHelper) {
-                showFeedback(`${employeeName} já está na lista`, 'info', 'processStepFeedback');
-                return;
-            }
-
-            const helperItem = document.createElement('div');
-            helperItem.className = 'helper-item';
-            helperItem.innerHTML = `
-                <span>${employeeName}</span>
-                <button class="remove-helper-btn"><i class="fas fa-times"></i></button>
-            `;
-            
-            helperItem.querySelector('.remove-helper-btn').addEventListener('click', () => {
-                helperItem.remove();
-                checkHelpersList();
-            });
-            
-            elements.helpersList.appendChild(helperItem);
-            checkHelpersList();
-            showFeedback(`${employeeName} adicionado como ajudante`, 'success', 'processStepFeedback');
-        }
-
-        function checkHelpersList() {
-            if (STAGES[currentStepModalStage].needsHelpers && isStartingStep) {
-                elements.confirmStepBtn.disabled = elements.helpersList.children.length === 0;
-            }
-        }
-
-        function confirmStartProcess() {
-            const dtNumber = elements.dtNumber.value.trim();
-            const vehicleType = elements.vehicleType.value;
-            const dockNumber = elements.dockNumber.value;
-            const operatorName = elements.operatorName.textContent;
-
-            if (!dtNumber || !vehicleType || !dockNumber || !operatorName) {
-                showFeedback('Preencha todos os campos obrigatórios', 'error', 'scanFeedback');
-                return;
-            }
-
-            const isDockInUse = currentProcesses.some(process => 
-                process.dock === dockNumber && getCurrentStage(process) <= 6
-            );
-
-            if (isDockInUse) {
-                showFeedback(`Doca ${dockNumber} já está em uso`, 'error', 'scanFeedback');
-                return;
-            }
-
-            elements.confirmProcessBtn.disabled = true;
-
-            const newProcess = {
-                dtNumber,
-                vehicleType,
-                dock: dockNumber,
-                operatorName,
-                status: 'in_progress',
-                stage1Start: firebase.database.ServerValue.TIMESTAMP,
-                createdBy: currentUser.uid,
-                createdAt: firebase.database.ServerValue.TIMESTAMP
-            };
-
-            db.ref('processes').push(newProcess)
-                .then(() => {
-                    showFeedback('Processo iniciado com sucesso!', 'success', 'scanFeedback');
-                    setTimeout(() => {
-                        hideModal(elements.startProcessModal);
-                        resetStartProcessForm();
-                    }, 1500);
-                })
-                .catch(error => {
-                    console.error('Erro ao iniciar processo:', error);
-                    showFeedback('Erro ao iniciar processo: ' + error.message, 'error', 'scanFeedback');
-                })
-                .finally(() => {
-                    elements.confirmProcessBtn.disabled = false;
-                });
-        }
-
-        function showProcessStepModal(processId, stage) {
-            currentStepModalProcessId = processId;
-            currentStepModalStage = parseInt(stage);
-            
-            const process = currentProcesses.find(p => p.id === processId);
-            if (!process) return;
-            
-            resetProcessStepForm();
-            
-            if (isStartingStep) {
-                elements.processStepTitle.textContent = `Iniciar ${STAGES[stage].name}`;
-                elements.confirmStepBtn.textContent = `Iniciar ${STAGES[stage].name}`;
-                elements.scanActionText.textContent = STAGES[stage].needsHelpers ? 'Adicionar Ajudante' : 'Ler QR Code do Operador';
-                
-                if (STAGES[stage].needsHelpers) {
-                    elements.helpersList.style.display = 'block';
-                } else {
-                    elements.helpersList.style.display = 'none';
-                }
-            } else {
-                elements.processStepTitle.textContent = `Finalizar ${STAGES[stage].name}`;
-                elements.confirmStepBtn.textContent = `Finalizar ${STAGES[stage].name}`;
-                elements.scanActionText.textContent = STAGES[stage].needsHelpers ? 'Confirmar Ajudante' : 'Ler QR Code do Operador';
-                elements.helpersList.style.display = 'none';
-            }
-            
-            elements.processDtNumber.textContent = process.dtNumber;
-            elements.processVehicleType.textContent = process.vehicleType;
-            elements.processDockNumber.textContent = process.dock;
-            
-            showModal(elements.processStepModal);
-        }
-
-        function confirmProcessStep() {
-            const process = currentProcesses.find(p => p.id === currentStepModalProcessId);
-            
-            if (!process) {
-                showFeedback('Processo não encontrado', 'error', 'processStepFeedback');
-                return;
-            }
-
-            const updates = {};
-            const now = firebase.database.ServerValue.TIMESTAMP;
-            
-            if (isStartingStep) {
-                // Iniciando uma etapa
-                if (STAGES[currentStepModalStage].needsHelpers && elements.helpersList.children.length === 0) {
-                    showFeedback('Adicione pelo menos um ajudante', 'error', 'processStepFeedback');
-                    return;
-                }
-                
-                if (!STAGES[currentStepModalStage].needsHelpers && !elements.stepOperatorName.textContent) {
-                    showFeedback('Escaneie o QR Code do operador', 'error', 'processStepFeedback');
-                    return;
-                }
-
-                updates[`stage${currentStepModalStage}Start`] = now;
-                
-                if (STAGES[currentStepModalStage].needsHelpers) {
-                    const helpers = [];
-                    Array.from(elements.helpersList.children).forEach(item => {
-                        helpers.push(item.textContent.trim().split(' (')[0]);
-                    });
-                    updates[`stage${currentStepModalStage}Helpers`] = helpers;
-                } else {
-                    updates[`stage${currentStepModalStage}Operator`] = elements.stepOperatorName.textContent;
-                }
-            } else {
-                // Finalizando uma etapa
-                updates[`stage${currentStepModalStage}End`] = now;
-                
-                // Se não for a última etapa, inicia a próxima
-                if (currentStepModalStage < 6) {
-                    updates[`stage${currentStepModalStage + 1}Start`] = now;
-                } else {
-                    updates.status = 'completed';
-                    updates.completedAt = now;
-                }
-                
-                // Calcula tempo de espera entre etapas
-                if (currentStepModalStage > 1) {
-                    const prevStageEnd = process[`stage${currentStepModalStage - 1}End`] || now;
-                    updates[`waitTime${currentStepModalStage - 1}_${currentStepModalStage}`] = now - prevStageEnd;
+            // Soma os tempos de todas as etapas concluídas
+            for (let i = 1; i < currentStage; i++) {
+                if (process[`stage${i}`] && process[`stage${i}`].duration) {
+                    totalSeconds += process[`stage${i}`].duration;
                 }
             }
             
-            elements.confirmStepBtn.disabled = true;
-
-            db.ref(`processes/${currentStepModalProcessId}`).update(updates)
-                .then(() => {
-                    const action = isStartingStep ? 'iniciada' : 'finalizada';
-                    showFeedback(`Etapa ${currentStepModalStage} ${action} com sucesso!`, 'success', 'processStepFeedback');
-                    
-                    if (currentStepModalStage === 6 && !isStartingStep) {
-                        saveProcessHistory(currentStepModalProcessId);
-                    }
-                    
-                    setTimeout(() => {
-                        hideModal(elements.processStepModal);
-                    }, 1500);
-                })
-                .catch(error => {
-                    console.error('Erro ao registrar etapa:', error);
-                    showFeedback('Erro ao registrar: ' + error.message, 'error', 'processStepFeedback');
-                    elements.confirmStepBtn.disabled = false;
-                });
-        }
-
-        function saveProcessHistory(processId) {
-            const process = currentProcesses.find(p => p.id === processId);
-            if (!process) return;
-
-            const historyData = {
-                processId,
-                dtNumber: process.dtNumber,
-                vehicleType: process.vehicleType,
-                dock: process.dock,
-                operator: process.operatorName,
-                startTime: process.stage1Start,
-                completedAt: firebase.database.ServerValue.TIMESTAMP,
-                stages: {},
-                waitTimes: {}
-            };
-
-            // Salva informações de cada etapa
-            for (let i = 1; i <= 6; i++) {
-                historyData.stages[i] = {
-                    name: STAGES[i].name,
-                    start: process[`stage${i}Start`],
-                    end: process[`stage${i}End`],
-                    operator: process[`stage${i}Operator`],
-                    helpers: process[`stage${i}Helpers`],
-                    duration: process[`stage${i}End`] - process[`stage${i}Start`]
-                };
-                
-                if (i > 1) {
-                    historyData.waitTimes[`${i-1}_${i}`] = {
-                        from: STAGES[i-1].name,
-                        to: STAGES[i].name,
-                        duration: process[`waitTime${i-1}_${i}`] || 0
-                    };
-                }
+            // Adiciona o tempo da etapa atual (se iniciada)
+            if (process[`stage${currentStage}`] && process[`stage${currentStage}`].startTime) {
+                const startTime = process[`stage${currentStage}`].startTime;
+                totalSeconds += Math.floor((now - startTime) / 1000);
             }
-
-            // Calcula tempo total
-            historyData.totalTime = historyData.completedAt - historyData.startTime;
-
-            db.ref('history').push(historyData)
-                .then(() => {
-                    db.ref(`processes/${processId}`).remove();
-                });
+            
+            return totalSeconds;
         }
-
-        function startProcessesTimer() {
-            if (window.processesInterval) {
-                clearInterval(window.processesInterval);
-            }
-
-            window.processesInterval = setInterval(() => {
-                const cards = document.querySelectorAll('.operation-card');
-                cards.forEach(card => {
-                    const processId = card.dataset.id;
-                    const process = currentProcesses.find(p => p.id === processId);
-                    
-                    if (process) {
-                        const elapsedTime = calculateElapsedTime(process);
-                        const timeElement = card.querySelector('.timer');
-                        if (timeElement) {
-                            timeElement.textContent = formatTime(elapsedTime);
-                        }
+        
+        function startGlobalTimer() {
+            setInterval(() => {
+                const timers = document.querySelectorAll('.timer');
+                timers.forEach(timer => {
+                    const processId = timer.closest('.process-card').querySelector('.stage-container').id.split('-')[1];
+                    if (processes[processId]) {
+                        const elapsedTime = calculateElapsedTime(processes[processId]);
+                        timer.textContent = formatTime(elapsedTime);
                     }
                 });
             }, 1000);
         }
-
-        function calculateElapsedTime(process) {
-            const currentStage = getCurrentStage(process);
-            const now = Date.now();
-            
-            let totalTime = 0;
-            
-            // Soma os tempos de todas as etapas
-            for (let i = 1; i <= currentStage; i++) {
-                const start = process[`stage${i}Start`] || now;
-                const end = i < currentStage ? (process[`stage${i}End`] || now) : now;
-                totalTime += (end - start);
-            }
-            
-            // Soma os tempos de espera entre etapas
-            for (let i = 1; i < currentStage; i++) {
-                const prevEnd = process[`stage${i}End`] || now;
-                const nextStart = process[`stage${i+1}Start`] || now;
-                totalTime += (nextStart - prevEnd);
-            }
-            
-            return Math.floor(totalTime / 1000);
-        }
-
-        function resetStartProcessForm() {
-            elements.dtNumber.value = '';
-            elements.vehicleType.value = '';
-            elements.dockNumber.value = '';
-            elements.operatorName.textContent = '';
-            elements.operatorInfo.style.display = 'none';
-            elements.confirmProcessBtn.disabled = true;
-            elements.scanFeedback.style.display = 'none';
-        }
-
-        function resetProcessStepForm() {
-            elements.stepOperatorName.textContent = '';
-            elements.stepOperatorInfo.style.display = 'none';
-            elements.helpersList.innerHTML = '';
-            elements.helpersList.style.display = 'none';
-            elements.confirmStepBtn.disabled = true;
-            elements.processStepFeedback.style.display = 'none';
-            currentStepStarted = false;
-        }
-
-        function showFeedback(message, type, elementId) {
-            const feedbackElement = document.getElementById(elementId);
-            if (!feedbackElement) return;
-
-            feedbackElement.textContent = message;
-            feedbackElement.className = 'message ' + type;
-            feedbackElement.style.display = 'block';
-            
-            if (type !== 'success') {
-                setTimeout(() => {
-                    feedbackElement.style.display = 'none';
-                }, 5000);
-            }
-        }
-
+        
         function formatTime(seconds) {
             const hrs = Math.floor(seconds / 3600);
             const mins = Math.floor((seconds % 3600) / 60);
