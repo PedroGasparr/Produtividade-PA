@@ -2,16 +2,31 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dashboard - Sistema PA</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --success-color: #2e7d32;
+            --warning-color: #e65100;
+            --danger-color: #c62828;
+            --light-color: #f5f5f5;
+            --dark-color: #333;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: 'Roboto', sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f5f5f5;
+            background-color: var(--light-color);
+            font-size: 14px;
         }
         
         .dashboard-container {
@@ -21,12 +36,20 @@
         }
         
         .sidebar {
-            width: 100%;
-            background-color: #2c3e50;
+            background-color: var(--secondary-color);
             color: white;
-            padding: 15px 0;
-            display: flex;
-            flex-direction: column;
+            padding: 10px 0;
+            position: fixed;
+            top: 0;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            z-index: 1000;
+            transition: left 0.3s ease;
+        }
+        
+        .sidebar.active {
+            left: 0;
         }
         
         .sidebar-header {
@@ -38,25 +61,21 @@
         .sidebar-logo {
             max-width: 80%;
             margin-bottom: 10px;
-            max-height: 60px;
         }
         
         .sidebar-menu {
             list-style: none;
             padding: 0;
-            margin: 10px 0 0;
-            display: flex;
-            overflow-x: auto;
-            white-space: nowrap;
+            margin: 15px 0 0;
         }
         
         .sidebar-menu li {
             padding: 10px 15px;
-            border-bottom: 4px solid transparent;
+            border-left: 4px solid transparent;
         }
         
         .sidebar-menu li.active {
-            border-bottom: 4px solid #3498db;
+            border-left: 4px solid var(--primary-color);
             background-color: #34495e;
         }
         
@@ -65,11 +84,10 @@
             text-decoration: none;
             display: flex;
             align-items: center;
-            font-size: 0.9em;
         }
         
         .sidebar-menu i {
-            margin-right: 5px;
+            margin-right: 10px;
             width: 20px;
             text-align: center;
         }
@@ -77,15 +95,34 @@
         .main-content {
             flex: 1;
             padding: 15px;
+            margin-top: 60px;
         }
         
-        .main-header {
+        .mobile-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #ddd;
+            padding: 10px 15px;
+            background-color: var(--secondary-color);
+            color: white;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 900;
+        }
+        
+        .mobile-header h1 {
+            font-size: 1.2em;
+            margin: 0;
+        }
+        
+        .menu-toggle {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5em;
+            cursor: pointer;
         }
         
         .user-info {
@@ -93,10 +130,14 @@
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 0.8em;
+            color: var(--dark-color);
         }
         
         .action-buttons {
             margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
         .btn {
@@ -105,24 +146,58 @@
             border-radius: 4px;
             cursor: pointer;
             font-weight: 500;
-            margin-right: 8px;
             font-size: 0.9em;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 120px;
+        }
+        
+        .btn i {
+            margin-right: 5px;
         }
         
         .primary-btn {
-            background-color: #3498db;
+            background-color: var(--primary-color);
             color: white;
         }
         
         .secondary-btn {
             background-color: #e0e0e0;
-            color: #333;
+            color: var(--dark-color);
+        }
+        
+        .success-btn {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .danger-btn {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .warning-btn {
+            background-color: var(--warning-color);
+            color: white;
         }
         
         .operations-grid {
             display: grid;
             grid-template-columns: 1fr;
             gap: 15px;
+        }
+        
+        @media (min-width: 768px) {
+            .operations-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .operations-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
         }
         
         .operation-card {
@@ -141,7 +216,7 @@
         }
         
         .operation-status {
-            padding: 2px 6px;
+            padding: 3px 8px;
             border-radius: 4px;
             font-size: 0.7em;
             font-weight: 500;
@@ -149,7 +224,7 @@
         
         .operation-status.loading {
             background-color: #fff3e0;
-            color: #e65100;
+            color: var(--warning-color);
         }
         
         .operation-status.awaiting_binding {
@@ -159,7 +234,7 @@
         
         .operation-status.binding {
             background-color: #e8f5e9;
-            color: #2e7d32;
+            color: var(--success-color);
         }
         
         .operation-status.completed {
@@ -190,7 +265,18 @@
         .operation-card-actions button {
             width: 100%;
             font-size: 0.8em;
-            padding: 6px;
+            padding: 6px 10px;
+        }
+        
+        .operation-stage {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 0.7em;
         }
         
         .modal {
@@ -202,10 +288,8 @@
             height: 100%;
             background-color: rgba(0,0,0,0.5);
             justify-content: center;
-            align-items: flex-start;
+            align-items: center;
             z-index: 1000;
-            overflow-y: auto;
-            padding: 15px 0;
         }
         
         .modal-content {
@@ -214,18 +298,20 @@
             border-radius: 5px;
             width: 95%;
             max-width: 500px;
-            margin: 15px auto;
+            max-height: 90vh;
+            overflow-y: auto;
             position: relative;
         }
         
         .close-modal {
             position: absolute;
-            top: 5px;
-            right: 5px;
-            font-size: 1.2em;
+            top: 10px;
+            right: 10px;
+            font-size: 1.5em;
             cursor: pointer;
             background: none;
             border: none;
+            color: var(--dark-color);
         }
         
         .form-group {
@@ -234,7 +320,7 @@
         
         .form-group label {
             display: block;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
             font-weight: 500;
             font-size: 0.9em;
         }
@@ -242,7 +328,7 @@
         .form-group input,
         .form-group select {
             width: 100%;
-            padding: 6px;
+            padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 0.9em;
@@ -265,10 +351,11 @@
             max-height: 250px;
             background-color: #000;
             margin-bottom: 8px;
+            border-radius: 4px;
         }
         
         .message {
-            padding: 8px;
+            padding: 8px 12px;
             margin: 8px 0;
             border-radius: 4px;
             display: none;
@@ -277,17 +364,20 @@
         
         .message.error {
             background-color: #ffebee;
-            color: #c62828;
+            color: var(--danger-color);
+            border-left: 3px solid var(--danger-color);
         }
         
         .message.success {
             background-color: #e8f5e9;
-            color: #2e7d32;
+            color: var(--success-color);
+            border-left: 3px solid var(--success-color);
         }
         
         .message.info {
             background-color: #e3f2fd;
             color: #1565c0;
+            border-left: 3px solid #1565c0;
         }
         
         .process-steps {
@@ -305,31 +395,24 @@
             font-size: 0.8em;
         }
         
+        .process-step h4 {
+            margin: 0 0 5px 0;
+            font-size: 1em;
+        }
+        
         .process-step.active {
             background-color: #e3f2fd;
-            border-color: #2196f3;
+            border-color: var(--primary-color);
         }
         
         .process-step.completed {
             background-color: #e8f5e9;
-            border-color: #4caf50;
+            border-color: var(--success-color);
         }
         
         .timer {
             font-family: monospace;
-            font-size: 1em;
             font-weight: bold;
-        }
-        
-        .operation-stage {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background-color: #2196f3;
-            color: white;
-            padding: 2px 5px;
-            border-radius: 3px;
-            font-size: 0.7em;
         }
         
         .helper-item {
@@ -346,212 +429,205 @@
         .remove-helper-btn {
             background: none;
             border: none;
-            color: #c62828;
+            color: var(--danger-color);
             cursor: pointer;
-            font-size: 0.8em;
             padding: 0 5px;
         }
         
         .time-details {
-            margin-top: 5px;
             font-size: 0.7em;
-            color: #555;
+            color: #666;
+            margin-top: 3px;
         }
         
-        .time-details div {
+        .time-details span {
+            display: block;
             margin-bottom: 2px;
         }
         
-        @media (min-width: 768px) {
-            .dashboard-container {
-                flex-direction: row;
-            }
-            
-            .sidebar {
-                width: 250px;
-                min-height: 100vh;
-                padding: 20px 0;
-            }
-            
-            .sidebar-menu {
-                flex-direction: column;
-                overflow-x: visible;
-                white-space: normal;
-            }
-            
-            .sidebar-menu li {
-                border-left: 4px solid transparent;
-                border-bottom: none;
-            }
-            
-            .sidebar-menu li.active {
-                border-left: 4px solid #3498db;
-                border-bottom: none;
-            }
-            
-            .operations-grid {
-                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            }
-            
-            .btn {
-                padding: 10px 15px;
-                font-size: 1em;
-            }
-            
-            .operation-card {
-                padding: 15px;
-            }
-            
-            .modal {
-                align-items: center;
-                padding: 0;
-            }
-            
-            .modal-content {
-                padding: 20px;
-            }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+        
+        .camera-switch {
+            margin-top: 8px;
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            cursor: pointer;
+        }
+        
+        .stage-time-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7em;
+            margin-top: 5px;
+        }
+        
+        .stage-time-info div {
+            background-color: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
         }
     </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <!-- Sidebar -->
-        <nav class="sidebar">
-            <div class="sidebar-header">
-                <img src="../img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo PA" class="sidebar-logo">
-                <h2>Sistema PA 9.0</h2>
+    <div class="overlay" id="overlay"></div>
+    
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+        <h1>Painel de Controle</h1>
+        <div class="user-info">
+            <span id="currentUser">Usuário</span>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="../img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo PA" class="sidebar-logo">
+            <h2>Sistema PA 5.0</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="active"><a href="dashboard.html"><i class="fas fa-home"></i> Início</a></li>
+            <li><a href="#"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            <li><a href="cadastro_colaborador.html"><i class="fas fa-users"></i> Cadastrar Funcionários</a></li>
+            <li><a href="buscar_funcionarios.html"><i class="fas fa-search"></i> Buscar Funcionários</a></li>
+            <li><a href="painel_de_controle.html"><i class="fa fa-tasks"></i> Painel De Controle</a></li>
+            <li><a href="historico.html"><i class="fas fa-history"></i> Histórico</a></li>
+            <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn primary-btn" id="startProcessBtn">
+                <i class="fas fa-plus"></i> Iniciar Processo
+            </button>
+        </div>
+
+        <!-- Current Operations -->
+        <section class="operations-section">
+            <h2>Processos em Andamento</h2>
+            <div class="operations-grid" id="operationsGrid">
+                <!-- Cards serão gerados dinamicamente aqui -->
             </div>
-            <ul class="sidebar-menu">
-                <li class="active"><a href="dashboard.html"><i class="fas fa-home"></i> Início</a></li>
-                <li><a href="#"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                <li><a href="cadastro_colaborador.html"><i class="fas fa-users"></i> Cadastrar Funcionários</a></li>
-                <li><a href="buscar_funcionarios.html"><i class="fas fa-search"></i> Buscar Funcionários</a></li>
-                <li><a href="painel_de_controle.html"><i class="fa fa-tasks"></i> Painel De Controle</a></li>
-                <li><a href="historico.html"><i class="fas fa-history"></i> Histórico</a></li>
-                <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
-            </ul>
-        </nav>
+        </section>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <header class="main-header">
-                <h1>Painel de Controle</h1>
-                <div class="user-info">
-                    <span id="currentUser">Usuário Logado</span>
+        <!-- Modal Iniciar Processo -->
+        <div class="modal" id="startProcessModal">
+            <div class="modal-content">
+                <button class="close-modal">&times;</button>
+                <h2>Iniciar Novo Processo</h2>
+
+                <div id="scanFeedback" class="message"></div>
+
+                <div class="qr-scanner-container">
+                    <video id="qrScanner" width="100%" playsinline></video>
+                    <button class="camera-switch" id="switchCameraBtn" style="display: none;">
+                        <i class="fas fa-sync-alt"></i> Trocar Câmera
+                    </button>
+                    <button class="btn primary-btn" id="startScannerBtn">
+                        <i class="fas fa-qrcode"></i> Ativar Leitor QR Code
+                    </button>
                 </div>
-            </header>
 
-            <!-- Action Buttons -->
-            <div class="action-buttons">
-                <button class="btn primary-btn" id="startProcessBtn">
-                    <i class="fas fa-plus"></i> Iniciar Novo Processo
-                </button>
-            </div>
-
-            <!-- Current Operations -->
-            <section class="operations-section">
-                <h2>Processos em Andamento</h2>
-                <div class="operations-grid" id="operationsGrid">
-                    <!-- Cards serão gerados dinamicamente aqui -->
+                <div id="operatorInfo" style="display: none; margin: 10px 0;">
+                    Operador: <strong id="operatorName"></strong>
                 </div>
-            </section>
 
-            <!-- Modal Iniciar Processo -->
-            <div class="modal" id="startProcessModal">
-                <div class="modal-content">
-                    <button class="close-modal">&times;</button>
-                    <h2>Iniciar Novo Processo</h2>
-
-                    <div id="scanFeedback" class="message"></div>
-
-                    <div class="qr-scanner-container">
-                        <video id="qrScanner" width="100%" playsinline></video>
-                        <button class="btn primary-btn" id="startScannerBtn">
-                            <i class="fas fa-qrcode"></i> Ativar Leitor QR Code
-                        </button>
-                    </div>
-
-                    <div id="operatorInfo" style="display: none; margin: 10px 0;">
-                        Operador: <strong id="operatorName"></strong>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="dtNumber">Número da DT - Nº do Pedido:</label>
-                        <input type="text" id="dtNumber" placeholder="Digite o número da DT" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="vehicleType">Tipo de Veículo:</label>
-                        <select id="vehicleType" required>
-                            <option value="">Selecione...</option>
-                            <option value="Caminhão">Caminhão</option>
-                            <option value="Carreta">Carreta</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="dockNumber">Doca:</label>
-                        <select id="dockNumber" required>
-                            <option value="">Selecione...</option>
-                            <option value="1">Doca 1</option>
-                            <option value="2">Doca 2</option>
-                            <option value="3">Doca 3</option>
-                            <option value="4">Doca 4</option>
-                            <option value="5">Doca 5</option>
-                            <option value="6">Doca 6</option>
-                            <option value="7">Doca 7</option>
-                            <option value="8">Doca 8</option>
-                            <option value="9">Doca 9</option>
-                            <option value="10">Doca 10</option>
-                            <option value="11">Doca 11</option>
-                        </select>
-                    </div>
-
-                    <div class="modal-actions">
-                        <button class="btn secondary-btn" id="cancelProcessBtn">Cancelar</button>
-                        <button class="btn primary-btn" id="confirmProcessBtn" disabled>Iniciar Processo</button>
-                    </div>
+                <div class="form-group">
+                    <label for="dtNumber">Número da DT - Nº do Pedido:</label>
+                    <input type="text" id="dtNumber" placeholder="Digite o número da DT" required>
                 </div>
-            </div>
 
-            <!-- Modal Etapa do Processo -->
-            <div class="modal" id="processStepModal">
-                <div class="modal-content">
-                    <button class="close-modal">&times;</button>
-                    <h2 id="processStepTitle">Etapa do Processo</h2>
+                <div class="form-group">
+                    <label for="vehicleType">Tipo de Veículo:</label>
+                    <select id="vehicleType" required>
+                        <option value="">Selecione...</option>
+                        <option value="Caminhão">Caminhão</option>
+                        <option value="Carreta">Carreta</option>
+                    </select>
+                </div>
 
-                    <div id="processStepFeedback" class="message"></div>
+                <div class="form-group">
+                    <label for="dockNumber">Doca:</label>
+                    <select id="dockNumber" required>
+                        <option value="">Selecione...</option>
+                        <option value="1">Doca 1</option>
+                        <option value="2">Doca 2</option>
+                        <option value="3">Doca 3</option>
+                        <option value="4">Doca 4</option>
+                        <option value="5">Doca 5</option>
+                        <option value="6">Doca 6</option>
+                        <option value="7">Doca 7</option>
+                        <option value="8">Doca 8</option>
+                        <option value="9">Doca 9</option>
+                        <option value="10">Doca 10</option>
+                        <option value="11">Doca 11</option>
+                    </select>
+                </div>
 
-                    <div class="process-info">
-                        <div><strong>DT:</strong> <span id="processDtNumber"></span></div>
-                        <div><strong>Veículo:</strong> <span id="processVehicleType"></span></div>
-                        <div><strong>Doca:</strong> <span id="processDockNumber"></span></div>
-                    </div>
-
-                    <div class="qr-scanner-container">
-                        <video id="stepQrScanner" width="100%" playsinline></video>
-                        <button class="btn primary-btn" id="startStepScannerBtn">
-                            <i class="fas fa-qrcode"></i> Ativar Leitor QR Code
-                        </button>
-                    </div>
-
-                    <div id="stepOperatorInfo" style="display: none; margin: 10px 0;">
-                        Operador: <strong id="stepOperatorName"></strong>
-                    </div>
-
-                    <div id="helpersList" style="display: none; margin: 10px 0; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
-                        <h3>Ajudantes:</h3>
-                        <!-- Lista de ajudantes será gerada aqui -->
-                    </div>
-
-                    <div class="modal-actions">
-                        <button class="btn secondary-btn" id="cancelStepBtn">Cancelar</button>
-                        <button class="btn primary-btn" id="confirmStepBtn" disabled>Confirmar</button>
-                    </div>
+                <div class="modal-actions">
+                    <button class="btn secondary-btn" id="cancelProcessBtn">Cancelar</button>
+                    <button class="btn primary-btn" id="confirmProcessBtn" disabled>Iniciar Processo</button>
                 </div>
             </div>
-        </main>
-    </div>
+        </div>
+
+        <!-- Modal Etapa do Processo -->
+        <div class="modal" id="processStepModal">
+            <div class="modal-content">
+                <button class="close-modal">&times;</button>
+                <h2 id="processStepTitle">Etapa do Processo</h2>
+
+                <div id="processStepFeedback" class="message"></div>
+
+                <div class="process-info">
+                    <div><strong>DT:</strong> <span id="processDtNumber"></span></div>
+                    <div><strong>Veículo:</strong> <span id="processVehicleType"></span></div>
+                    <div><strong>Doca:</strong> <span id="processDockNumber"></span></div>
+                </div>
+
+                <div class="qr-scanner-container">
+                    <video id="stepQrScanner" width="100%" playsinline></video>
+                    <button class="camera-switch" id="switchStepCameraBtn" style="display: none;">
+                        <i class="fas fa-sync-alt"></i> Trocar Câmera
+                    </button>
+                    <button class="btn primary-btn" id="startStepScannerBtn">
+                        <i class="fas fa-qrcode"></i> Ativar Leitor QR Code
+                    </button>
+                </div>
+
+                <div id="stepOperatorInfo" style="display: none; margin: 10px 0;">
+                    Operador: <strong id="stepOperatorName"></strong>
+                </div>
+
+                <div id="helpersList" style="display: none; margin: 10px 0; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+                    <h3>Ajudantes:</h3>
+                    <!-- Lista de ajudantes será gerada aqui -->
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn secondary-btn" id="cancelStepBtn">Cancelar</button>
+                    <button class="btn primary-btn" id="confirmStepBtn" disabled>Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </main>
 
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -578,6 +654,16 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // Mapeamento das etapas
+        const STAGES = {
+            1: { name: 'Vistoria', buttonText: 'Iniciar Vistoria' },
+            2: { name: 'Abertura', buttonText: 'Adicionar Ajudantes' },
+            3: { name: 'Separação', buttonText: 'Iniciar Separação' },
+            4: { name: 'Faturamento', buttonText: 'Iniciar Faturamento' },
+            5: { name: 'Carregamento', buttonText: 'Iniciar Carregamento' },
+            6: { name: 'Fechamento', buttonText: 'Adicionar Ajudantes' }
+        };
+
         // Variáveis globais
         let currentUser = null;
         let qrScanner = null;
@@ -586,11 +672,14 @@
         let currentStepModalProcessId = null;
         let currentStepModalStage = null;
         let cameras = [];
-        let currentCamera = null;
-        let stageTimers = {}; // Para armazenar os temporizadores de cada etapa
+        let currentCameraIndex = 0;
+        let currentStepCameraIndex = 0;
 
         // Elementos da página
         const elements = {
+            menuToggle: document.getElementById('menuToggle'),
+            overlay: document.getElementById('overlay'),
+            sidebar: document.getElementById('sidebar'),
             startProcessBtn: document.getElementById('startProcessBtn'),
             operationsGrid: document.getElementById('operationsGrid'),
             startProcessModal: document.getElementById('startProcessModal'),
@@ -600,6 +689,7 @@
             // Modal de Início
             qrScanner: document.getElementById('qrScanner'),
             startScannerBtn: document.getElementById('startScannerBtn'),
+            switchCameraBtn: document.getElementById('switchCameraBtn'),
             operatorName: document.getElementById('operatorName'),
             operatorInfo: document.getElementById('operatorInfo'),
             dtNumber: document.getElementById('dtNumber'),
@@ -616,6 +706,7 @@
             processDockNumber: document.getElementById('processDockNumber'),
             stepQrScanner: document.getElementById('stepQrScanner'),
             startStepScannerBtn: document.getElementById('startStepScannerBtn'),
+            switchStepCameraBtn: document.getElementById('switchStepCameraBtn'),
             stepOperatorName: document.getElementById('stepOperatorName'),
             stepOperatorInfo: document.getElementById('stepOperatorInfo'),
             helpersList: document.getElementById('helpersList'),
@@ -672,7 +763,7 @@
             card.innerHTML = `
                 <div class="operation-card-header">
                     <div class="operation-card-title">Doca ${process.dock}</div>
-                    <div class="operation-status">${getStageLabel(currentStage)}</div>
+                    <div class="operation-status ${getStatusClass(currentStage)}">${STAGES[currentStage].name}</div>
                     <div class="operation-stage">Etapa ${currentStage}</div>
                 </div>
                 
@@ -689,18 +780,22 @@
                 </div>
                 
                 <div class="time-details">
-                    <div><strong>Tempos por etapa:</strong></div>
-                    ${renderStageTimes(stageTimes)}
+                    ${renderTimeDetails(stageTimes)}
                 </div>
             `;
 
-            elements.operationsGrid.appendChild(card);
+            // Se já existe um card com esse ID, substitui
+            const existingCard = document.querySelector(`.operation-card[data-id="${process.id}"]`);
+            if (existingCard) {
+                existingCard.replaceWith(card);
+            } else {
+                elements.operationsGrid.appendChild(card);
+            }
 
-            // Adiciona os event listeners aos botões de etapa
+            // Adiciona eventos aos botões das etapas
             const stageButtons = card.querySelectorAll('.stage-action-btn');
             stageButtons.forEach(button => {
-                button.addEventListener('click', (e) => {
-                    e.stopPropagation();
+                button.addEventListener('click', () => {
                     const stage = parseInt(button.dataset.stage);
                     showProcessStepModal(process.id, stage);
                 });
@@ -708,33 +803,25 @@
         }
 
         function renderProcessSteps(process, currentStage) {
-            const stages = [
-                { id: 1, name: 'Vistoria' },
-                { id: 2, name: 'Abertura' },
-                { id: 3, name: 'Separação' },
-                { id: 4, name: 'Faturamento' },
-                { id: 5, name: 'Carregamento' },
-                { id: 6, name: 'Fechamento' }
-            ];
-
-            return stages.map(stage => {
-                const isCompleted = process[`stage${stage.id}End`] !== undefined;
-                const isActive = currentStage === stage.id;
+            return Object.entries(STAGES).map(([stageId, stageData]) => {
+                const stageNum = parseInt(stageId);
+                const isCompleted = process[`stage${stageId}End`] !== undefined;
+                const isActive = currentStage === stageNum;
                 
                 let stageContent = `<div class="process-step ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}">`;
-                stageContent += `<h4>${stage.id}. ${stage.name}</h4>`;
+                stageContent += `<h4>${stageId}. ${stageData.name}</h4>`;
                 
                 if (isCompleted) {
-                    const startTime = process[`stage${stage.id}Start`];
-                    const endTime = process[`stage${stage.id}End`];
+                    const startTime = process[`stage${stageId}Start`];
+                    const endTime = process[`stage${stageId}End`];
                     const duration = formatTime(Math.floor((endTime - startTime) / 1000));
-                    stageContent += `<div>Tempo: ${duration}</div>`;
+                    stageContent += `<div class="stage-time-info">
+                        <div>Tempo: ${duration}</div>
+                    </div>`;
                 } else if (isActive) {
-                    if (stage.id === 2 || stage.id === 6) {
-                        stageContent += `<button class="btn primary-btn stage-action-btn" data-stage="${stage.id}">Adicionar Ajudantes</button>`;
-                    } else {
-                        stageContent += `<button class="btn primary-btn stage-action-btn" data-stage="${stage.id}">Iniciar ${stage.name}</button>`;
-                    }
+                    stageContent += `<button class="btn primary-btn stage-action-btn" data-stage="${stageId}">
+                        ${stageData.buttonText}
+                    </button>`;
                 }
                 
                 stageContent += `</div>`;
@@ -742,39 +829,56 @@
             }).join('');
         }
 
-        function renderStageTimes(stageTimes) {
-            let html = '';
-            for (let i = 1; i <= 6; i++) {
-                if (stageTimes[i]) {
-                    html += `<div>${getStageLabel(i)}: ${formatTime(stageTimes[i].duration)}`;
-                    if (stageTimes[i].waitTime) {
-                        html += ` (Espera: ${formatTime(stageTimes[i].waitTime)})`;
-                    }
-                    html += `</div>`;
+        function renderTimeDetails(stageTimes) {
+            let html = '<strong>Detalhes de Tempo:</strong>';
+            
+            // Tempo total
+            html += `<span>Total: ${formatTime(stageTimes.total)}</span>`;
+            
+            // Tempos por etapa
+            stageTimes.stages.forEach((stage, index) => {
+                if (stage.duration > 0) {
+                    html += `<span>${STAGES[index+1].name}: ${formatTime(stage.duration)}</span>`;
                 }
-            }
+            });
+            
+            // Tempos entre etapas
+            stageTimes.waitTimes.forEach((waitTime, index) => {
+                if (waitTime > 0) {
+                    html += `<span>Entre ${STAGES[index+1].name} e ${STAGES[index+2].name}: ${formatTime(waitTime)}</span>`;
+                }
+            });
+            
             return html;
         }
 
         function calculateStageTimes(process) {
-            const times = {};
+            const result = {
+                total: 0,
+                stages: Array(6).fill().map(() => ({ duration: 0 })),
+                waitTimes: Array(5).fill(0)
+            };
             
-            for (let i = 1; i <= 6; i++) {
-                const start = process[`stage${i}Start`];
-                const end = process[`stage${i}End`] || Date.now();
-                
-                if (start) {
-                    times[i] = {
-                        duration: Math.floor(((end || Date.now()) - start) / 1000)
-                    };
-                    
-                    if (i > 1 && process[`waitTime${i-1}_${i}`]) {
-                        times[i].waitTime = Math.floor(process[`waitTime${i-1}_${i}`] / 1000);
-                    }
-                }
+            const now = Date.now();
+            const currentStage = getCurrentStage(process);
+            
+            // Calcula tempos das etapas
+            for (let i = 1; i <= currentStage; i++) {
+                const start = process[`stage${i}Start`] || now;
+                const end = i < currentStage ? (process[`stage${i}End`] || now) : now;
+                result.stages[i-1].duration = Math.floor((end - start) / 1000);
+                result.total += result.stages[i-1].duration;
             }
             
-            return times;
+            // Calcula tempos de espera entre etapas
+            for (let i = 1; i < currentStage; i++) {
+                const prevEnd = process[`stage${i}End`] || now;
+                const nextStart = process[`stage${i+1}Start`] || now;
+                result.waitTimes[i-1] = Math.floor((nextStart - prevEnd) / 1000);
+                result.total += result.waitTimes[i-1];
+            }
+            
+            return result;
         }
 
         function getCurrentStage(process) {
@@ -786,40 +890,82 @@
             return 6;
         }
 
+        function getStatusClass(stage) {
+            const statusClasses = {
+                1: 'loading',
+                2: 'awaiting_binding',
+                3: 'binding',
+                4: 'binding',
+                5: 'binding',
+                6: 'completed'
+            };
+            return statusClasses[stage] || '';
+        }
+
         function setupEventListeners() {
+            // Menu mobile
+            elements.menuToggle.addEventListener('click', toggleSidebar);
+            elements.overlay.addEventListener('click', toggleSidebar);
+            
+            // Processo
             elements.startProcessBtn.addEventListener('click', () => {
                 resetStartProcessForm();
-                elements.startProcessModal.style.display = 'flex';
+                showModal(elements.startProcessModal);
             });
             
+            // Scanner
             elements.startScannerBtn.addEventListener('click', startScanner);
+            elements.switchCameraBtn.addEventListener('click', switchCamera);
             elements.cancelProcessBtn.addEventListener('click', () => {
-                elements.startProcessModal.style.display = 'none';
+                hideModal(elements.startProcessModal);
                 stopScanner();
             });
             elements.confirmProcessBtn.addEventListener('click', confirmStartProcess);
             
+            // Etapa
             elements.startStepScannerBtn.addEventListener('click', startStepScanner);
+            elements.switchStepCameraBtn.addEventListener('click', switchStepCamera);
             elements.cancelStepBtn.addEventListener('click', () => {
-                elements.processStepModal.style.display = 'none';
+                hideModal(elements.processStepModal);
                 stopStepScanner();
             });
             elements.confirmStepBtn.addEventListener('click', confirmProcessStep);
             
+            // Logout
             document.getElementById('logoutBtn').addEventListener('click', () => {
                 firebase.auth().signOut().then(() => {
                     window.location.href = '../index.html';
                 });
             });
             
+            // Fechar modais
             document.querySelectorAll('.close-modal').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    elements.startProcessModal.style.display = 'none';
-                    elements.processStepModal.style.display = 'none';
-                    stopScanner();
-                    stopStepScanner();
+                    const modal = btn.closest('.modal');
+                    hideModal(modal);
+                    
+                    if (modal.id === 'startProcessModal') {
+                        stopScanner();
+                    } else {
+                        stopStepScanner();
+                    }
                 });
             });
+        }
+
+        function toggleSidebar() {
+            elements.sidebar.classList.toggle('active');
+            elements.overlay.style.display = elements.sidebar.classList.contains('active') ? 'block' : 'none';
+        }
+
+        function showModal(modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideModal(modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
         }
 
         function startScanner() {
@@ -844,29 +990,9 @@
                         throw new Error('Nenhuma câmera encontrada. Verifique as permissões.');
                     }
                     
-                    // Prioriza câmera traseira explicitamente
-                    let rearCamera = null;
-                    
-                    // Primeiro tenta encontrar por facingMode
-                    rearCamera = cameras.find(cam => cam.facingMode === 'environment');
-                    
-                    // Se não encontrar, tenta por nome
-                    if (!rearCamera) {
-                        rearCamera = cameras.find(cam => 
-                            cam.name.toLowerCase().includes('rear') || 
-                            cam.name.toLowerCase().includes('traseira') || 
-                            cam.name.toLowerCase().includes('back')
-                        );
-                    }
-                    
-                    // Se ainda não encontrou, usa a primeira câmera disponível
-                    if (!rearCamera) {
-                        rearCamera = cameras[0];
-                        console.warn('Câmera traseira não identificada, usando a primeira câmera disponível');
-                    }
-                    
-                    currentCamera = rearCamera;
-                    return qrScanner.start(rearCamera);
+                    currentCameraIndex = 0;
+                    elements.switchCameraBtn.style.display = cameras.length > 1 ? 'block' : 'none';
+                    return qrScanner.start(cameras[currentCameraIndex]);
                 })
                 .then(() => {
                     showFeedback('Scanner iniciado com sucesso', 'success', 'scanFeedback');
@@ -878,6 +1004,20 @@
                         errorMessage = 'Permissão para acessar a câmera foi negada. Por favor, permita o acesso à câmera nas configurações do seu navegador.';
                     }
                     showFeedback(errorMessage, 'error', 'scanFeedback');
+                });
+        }
+
+        function switchCamera() {
+            if (!qrScanner || cameras.length < 2) return;
+            
+            currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
+            qrScanner.start(cameras[currentCameraIndex])
+                .then(() => {
+                    showFeedback(`Câmera trocada para ${cameras[currentCameraIndex].name}`, 'info', 'scanFeedback');
+                })
+                .catch(error => {
+                    console.error('Erro ao trocar câmera:', error);
+                    showFeedback('Erro ao trocar câmera', 'error', 'scanFeedback');
                 });
         }
 
@@ -902,28 +1042,9 @@
                         throw new Error('Nenhuma câmera encontrada');
                     }
                     
-                    // Prioriza câmera traseira explicitamente
-                    let rearCamera = null;
-                    
-                    // Primeiro tenta encontrar por facingMode
-                    rearCamera = cameraList.find(cam => cam.facingMode === 'environment');
-                    
-                    // Se não encontrar, tenta por nome
-                    if (!rearCamera) {
-                        rearCamera = cameraList.find(cam => 
-                            cam.name.toLowerCase().includes('rear') || 
-                            cam.name.toLowerCase().includes('traseira') || 
-                            cam.name.toLowerCase().includes('back')
-                        );
-                    }
-                    
-                    // Se ainda não encontrou, usa a câmera atual ou a primeira disponível
-                    if (!rearCamera) {
-                        rearCamera = currentCamera || cameraList[0];
-                        console.warn('Câmera traseira não identificada, usando câmera disponível');
-                    }
-                    
-                    return stepQrScanner.start(rearCamera);
+                    currentStepCameraIndex = 0;
+                    elements.switchStepCameraBtn.style.display = cameraList.length > 1 ? 'block' : 'none';
+                    return stepQrScanner.start(cameraList[currentStepCameraIndex]);
                 })
                 .then(() => {
                     showFeedback('Scanner iniciado com sucesso', 'success', 'processStepFeedback');
@@ -934,12 +1055,27 @@
                 });
         }
 
+        function switchStepCamera() {
+            if (!stepQrScanner || cameras.length < 2) return;
+            
+            currentStepCameraIndex = (currentStepCameraIndex + 1) % cameras.length;
+            stepQrScanner.start(cameras[currentStepCameraIndex])
+                .then(() => {
+                    showFeedback(`Câmera trocada para ${cameras[currentStepCameraIndex].name}`, 'info', 'processStepFeedback');
+                })
+                .catch(error => {
+                    console.error('Erro ao trocar câmera:', error);
+                    showFeedback('Erro ao trocar câmera', 'error', 'processStepFeedback');
+                });
+        }
+
         function stopScanner() {
             if (qrScanner) {
                 qrScanner.stop();
                 qrScanner = null;
             }
             elements.qrScanner.style.display = 'none';
+            elements.switchCameraBtn.style.display = 'none';
         }
 
         function stopStepScanner() {
@@ -948,6 +1084,7 @@
                 stepQrScanner = null;
             }
             elements.stepQrScanner.style.display = 'none';
+            elements.switchStepCameraBtn.style.display = 'none';
         }
 
         function handleQrScan(content, type) {
@@ -1068,7 +1205,7 @@
                 .then(() => {
                     showFeedback('Processo iniciado com sucesso!', 'success', 'scanFeedback');
                     setTimeout(() => {
-                        elements.startProcessModal.style.display = 'none';
+                        hideModal(elements.startProcessModal);
                         resetStartProcessForm();
                     }, 1500);
                 })
@@ -1085,16 +1222,11 @@
             currentStepModalProcessId = processId;
             currentStepModalStage = parseInt(stage);
             
-            // Encontra o processo atual na lista de processos
             const process = currentProcesses.find(p => p.id === processId);
-            if (!process) {
-                console.error('Processo não encontrado:', processId, currentProcesses);
-                showFeedback('Processo não encontrado. Atualize a página e tente novamente.', 'error', 'processStepFeedback');
-                return;
-            }
+            if (!process) return;
             
             resetProcessStepForm();
-            elements.processStepTitle.textContent = `Etapa ${stage} - ${getStageLabel(stage)}`;
+            elements.processStepTitle.textContent = `Etapa ${stage} - ${STAGES[stage].name}`;
             elements.processDtNumber.textContent = process.dtNumber;
             elements.processVehicleType.textContent = process.vehicleType;
             elements.processDockNumber.textContent = process.dock;
@@ -1106,11 +1238,11 @@
                 elements.confirmStepBtn.textContent = 'Iniciar Etapa';
             }
             
-            elements.processStepModal.style.display = 'flex';
+            showModal(elements.processStepModal);
         }
 
-        function confirmProcessStep(processId, stage) {
-            const process = currentProcesses.find(p => p.id === processId);
+        function confirmProcessStep() {
+            const process = currentProcesses.find(p => p.id === currentStepModalProcessId);
             
             if (!process) {
                 showFeedback('Processo não encontrado', 'error', 'processStepFeedback');
@@ -1120,61 +1252,56 @@
             const updates = {};
             const now = firebase.database.ServerValue.TIMESTAMP;
             
-            if ((stage == 2 || stage == 6) && elements.helpersList.children.length === 0) {
+            if ((currentStepModalStage == 2 || currentStepModalStage == 6) && elements.helpersList.children.length === 0) {
                 showFeedback('Adicione pelo menos um ajudante', 'error', 'processStepFeedback');
                 return;
             }
             
-            if (stage != 2 && stage != 6 && !elements.stepOperatorName.textContent) {
+            if (currentStepModalStage != 2 && currentStepModalStage != 6 && !elements.stepOperatorName.textContent) {
                 showFeedback('Escaneie o QR Code do operador', 'error', 'processStepFeedback');
                 return;
             }
 
-            // Registrar o término da etapa atual
-            updates[`stage${stage}End`] = now;
+            // Finaliza a etapa atual
+            updates[`stage${currentStepModalStage}End`] = now;
             
-            // Se for etapa 2 ou 6, registrar os ajudantes
-            if (stage == 2 || stage == 6) {
+            // Adiciona ajudantes se for etapa 2 ou 6
+            if (currentStepModalStage == 2 || currentStepModalStage == 6) {
                 const helpers = [];
                 Array.from(elements.helpersList.children).forEach(item => {
                     helpers.push(item.textContent.trim().split(' (')[0]);
                 });
-                updates[`stage${stage}Helpers`] = helpers;
+                updates[`stage${currentStepModalStage}Helpers`] = helpers;
             } else {
-                // Registrar o operador responsável pela etapa
-                updates[`stage${stage}Operator`] = elements.stepOperatorName.textContent;
+                updates[`stage${currentStepModalStage}Operator`] = elements.stepOperatorName.textContent;
             }
             
-            // Se não for a última etapa, iniciar a próxima
-            if (stage < 6) {
-                updates[`stage${stage + 1}Start`] = now;
+            // Se não for a última etapa, inicia a próxima
+            if (currentStepModalStage < 6) {
+                updates[`stage${currentStepModalStage + 1}Start`] = now;
             } else {
-                // Se for a última etapa, marcar como concluído
                 updates.status = 'completed';
                 updates.completedAt = now;
             }
             
-            // Registrar o tempo de espera entre etapas
-            if (stage > 1) {
-                const prevStageEnd = process[`stage${stage - 1}End`] || now;
-                updates[`waitTime${stage - 1}_${stage}`] = now - prevStageEnd;
+            // Calcula tempo de espera entre etapas
+            if (currentStepModalStage > 1) {
+                const prevStageEnd = process[`stage${currentStepModalStage - 1}End`] || now;
+                updates[`waitTime${currentStepModalStage - 1}_${currentStepModalStage}`] = now - prevStageEnd;
             }
-            
-            // Registrar o tempo total do processo
-            updates.totalTime = now - process.stage1Start;
             
             elements.confirmStepBtn.disabled = true;
 
-            db.ref(`processes/${processId}`).update(updates)
+            db.ref(`processes/${currentStepModalProcessId}`).update(updates)
                 .then(() => {
-                    showFeedback(`Etapa ${stage} registrada com sucesso!`, 'success', 'processStepFeedback');
+                    showFeedback(`Etapa ${currentStepModalStage} registrada com sucesso!`, 'success', 'processStepFeedback');
                     
-                    if (stage === 6) {
-                        saveProcessHistory(processId);
+                    if (currentStepModalStage === 6) {
+                        saveProcessHistory(currentStepModalProcessId);
                     }
                     
                     setTimeout(() => {
-                        elements.processStepModal.style.display = 'none';
+                        hideModal(elements.processStepModal);
                     }, 1500);
                 })
                 .catch(error => {
@@ -1196,23 +1323,32 @@
                 operator: process.operatorName,
                 startTime: process.stage1Start,
                 completedAt: firebase.database.ServerValue.TIMESTAMP,
-                totalTime: process.totalTime || 0,
-                stages: {}
+                stages: {},
+                waitTimes: {}
             };
 
+            // Salva informações de cada etapa
             for (let i = 1; i <= 6; i++) {
                 historyData.stages[i] = {
+                    name: STAGES[i].name,
                     start: process[`stage${i}Start`],
                     end: process[`stage${i}End`],
-                    duration: process[`stage${i}End`] - process[`stage${i}Start`],
                     operator: process[`stage${i}Operator`],
-                    helpers: process[`stage${i}Helpers`]
+                    helpers: process[`stage${i}Helpers`],
+                    duration: process[`stage${i}End`] - process[`stage${i}Start`]
                 };
                 
                 if (i > 1) {
-                    historyData.stages[i].waitTime = process[`waitTime${i-1}_${i}`];
+                    historyData.waitTimes[`${i-1}_${i}`] = {
+                        from: STAGES[i-1].name,
+                        to: STAGES[i].name,
+                        duration: process[`waitTime${i-1}_${i}`] || 0
+                    };
                 }
             }
+
+            // Calcula tempo total
+            historyData.totalTime = historyData.completedAt - historyData.startTime;
 
             db.ref('history').push(historyData)
                 .then(() => {
@@ -1237,13 +1373,6 @@
                         if (timeElement) {
                             timeElement.textContent = formatTime(elapsedTime);
                         }
-                        
-                        // Atualizar os tempos das etapas
-                        const stageTimes = calculateStageTimes(process);
-                        const timeDetails = card.querySelector('.time-details');
-                        if (timeDetails) {
-                            timeDetails.innerHTML = `<div><strong>Tempos por etapa:</strong></div>${renderStageTimes(stageTimes)}`;
-                        }
                     }
                 });
             }, 1000);
@@ -1255,11 +1384,18 @@
             
             let totalTime = 0;
             
+            // Soma os tempos de todas as etapas
             for (let i = 1; i <= currentStage; i++) {
                 const start = process[`stage${i}Start`] || now;
                 const end = i < currentStage ? (process[`stage${i}End`] || now) : now;
-                
                 totalTime += (end - start);
+            }
+            
+            // Soma os tempos de espera entre etapas
+            for (let i = 1; i < currentStage; i++) {
+                const prevEnd = process[`stage${i}End`] || now;
+                const nextStart = process[`stage${i+1}Start`] || now;
+                totalTime += (nextStart - prevEnd);
             }
             
             return Math.floor(totalTime / 1000);
@@ -1305,18 +1441,6 @@
             const secs = seconds % 60;
             
             return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
-
-        function getStageLabel(stage) {
-            const labels = {
-                1: 'Vistoria',
-                2: 'Abertura',
-                3: 'Separação',
-                4: 'Faturamento',
-                5: 'Carregamento',
-                6: 'Fechamento'
-            };
-            return labels[stage] || `Etapa ${stage}`;
         }
     </script>
 </body>
