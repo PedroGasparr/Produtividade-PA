@@ -419,7 +419,7 @@
         <nav class="sidebar">
             <div class="sidebar-header">
                 <img src="../img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo PA" class="sidebar-logo">
-                <h2>Sistema PA 8.0</h2>
+                <h2>Sistema PA 9.0</h2>
             </div>
             <ul class="sidebar-menu">
                 <li class="active"><a href="dashboard.html"><i class="fas fa-home"></i> Início</a></li>
@@ -696,10 +696,12 @@
 
             elements.operationsGrid.appendChild(card);
 
+            // Adiciona os event listeners aos botões de etapa
             const stageButtons = card.querySelectorAll('.stage-action-btn');
             stageButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const stage = button.dataset.stage;
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const stage = parseInt(button.dataset.stage);
                     showProcessStepModal(process.id, stage);
                 });
             });
@@ -842,12 +844,26 @@
                         throw new Error('Nenhuma câmera encontrada. Verifique as permissões.');
                     }
                     
-                    // Prioriza câmera traseira
-                    const rearCamera = cameras.find(cam => 
-                        cam.name.toLowerCase().includes('rear') || 
-                        cam.name.toLowerCase().includes('traseira') || 
-                        cam.facing === 'environment'
-                    ) || cameras[0];
+                    // Prioriza câmera traseira explicitamente
+                    let rearCamera = null;
+                    
+                    // Primeiro tenta encontrar por facingMode
+                    rearCamera = cameras.find(cam => cam.facingMode === 'environment');
+                    
+                    // Se não encontrar, tenta por nome
+                    if (!rearCamera) {
+                        rearCamera = cameras.find(cam => 
+                            cam.name.toLowerCase().includes('rear') || 
+                            cam.name.toLowerCase().includes('traseira') || 
+                            cam.name.toLowerCase().includes('back')
+                        );
+                    }
+                    
+                    // Se ainda não encontrou, usa a primeira câmera disponível
+                    if (!rearCamera) {
+                        rearCamera = cameras[0];
+                        console.warn('Câmera traseira não identificada, usando a primeira câmera disponível');
+                    }
                     
                     currentCamera = rearCamera;
                     return qrScanner.start(rearCamera);
@@ -886,8 +902,28 @@
                         throw new Error('Nenhuma câmera encontrada');
                     }
                     
-                    const cameraToUse = currentCamera || cameraList[0];
-                    return stepQrScanner.start(cameraToUse);
+                    // Prioriza câmera traseira explicitamente
+                    let rearCamera = null;
+                    
+                    // Primeiro tenta encontrar por facingMode
+                    rearCamera = cameraList.find(cam => cam.facingMode === 'environment');
+                    
+                    // Se não encontrar, tenta por nome
+                    if (!rearCamera) {
+                        rearCamera = cameraList.find(cam => 
+                            cam.name.toLowerCase().includes('rear') || 
+                            cam.name.toLowerCase().includes('traseira') || 
+                            cam.name.toLowerCase().includes('back')
+                        );
+                    }
+                    
+                    // Se ainda não encontrou, usa a câmera atual ou a primeira disponível
+                    if (!rearCamera) {
+                        rearCamera = currentCamera || cameraList[0];
+                        console.warn('Câmera traseira não identificada, usando câmera disponível');
+                    }
+                    
+                    return stepQrScanner.start(rearCamera);
                 })
                 .then(() => {
                     showFeedback('Scanner iniciado com sucesso', 'success', 'processStepFeedback');
@@ -1049,8 +1085,13 @@
             currentStepModalProcessId = processId;
             currentStepModalStage = parseInt(stage);
             
+            // Encontra o processo atual na lista de processos
             const process = currentProcesses.find(p => p.id === processId);
-            if (!process) return;
+            if (!process) {
+                console.error('Processo não encontrado:', processId, currentProcesses);
+                showFeedback('Processo não encontrado. Atualize a página e tente novamente.', 'error', 'processStepFeedback');
+                return;
+            }
             
             resetProcessStepForm();
             elements.processStepTitle.textContent = `Etapa ${stage} - ${getStageLabel(stage)}`;
@@ -1061,10 +1102,8 @@
             if (stage == 2 || stage == 6) {
                 elements.helpersList.style.display = 'block';
                 elements.confirmStepBtn.textContent = 'Confirmar Ajudantes';
-                elements.confirmStepBtn.onclick = () => confirmProcessStep(processId, stage);
             } else {
                 elements.confirmStepBtn.textContent = 'Iniciar Etapa';
-                elements.confirmStepBtn.onclick = () => confirmProcessStep(processId, stage);
             }
             
             elements.processStepModal.style.display = 'flex';
