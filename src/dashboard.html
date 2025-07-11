@@ -479,6 +479,16 @@
             padding: 2px 5px;
             border-radius: 3px;
         }
+        
+        .step-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .step-actions button {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -656,12 +666,12 @@
 
         // Mapeamento das etapas
         const STAGES = {
-            1: { name: 'Vistoria', buttonText: 'Iniciar Vistoria' },
-            2: { name: 'Abertura', buttonText: 'Adicionar Ajudantes' },
-            3: { name: 'Separação', buttonText: 'Iniciar Separação' },
-            4: { name: 'Faturamento', buttonText: 'Iniciar Faturamento' },
-            5: { name: 'Carregamento', buttonText: 'Iniciar Carregamento' },
-            6: { name: 'Fechamento', buttonText: 'Adicionar Ajudantes' }
+            1: { name: 'Vistoria', needsHelpers: false, startText: 'Iniciar Vistoria', endText: 'Finalizar Vistoria' },
+            2: { name: 'Abertura', needsHelpers: true, startText: 'Adicionar Ajudantes', endText: 'Confirmar Ajudantes' },
+            3: { name: 'Separação', needsHelpers: false, startText: 'Iniciar Separação', endText: 'Finalizar Separação' },
+            4: { name: 'Faturamento', needsHelpers: false, startText: 'Iniciar Faturamento', endText: 'Finalizar Faturamento' },
+            5: { name: 'Carregamento', needsHelpers: false, startText: 'Iniciar Carregamento', endText: 'Finalizar Carregamento' },
+            6: { name: 'Fechamento', needsHelpers: true, startText: 'Adicionar Ajudantes', endText: 'Finalizar Processo' }
         };
 
         // Variáveis globais
@@ -674,6 +684,7 @@
         let cameras = [];
         let currentCameraIndex = 0;
         let currentStepCameraIndex = 0;
+        let isStartingStep = true;
 
         // Elementos da página
         const elements = {
@@ -793,10 +804,20 @@
             }
 
             // Adiciona eventos aos botões das etapas
-            const stageButtons = card.querySelectorAll('.stage-action-btn');
-            stageButtons.forEach(button => {
+            const startButtons = card.querySelectorAll('.start-stage-btn');
+            startButtons.forEach(button => {
                 button.addEventListener('click', () => {
                     const stage = parseInt(button.dataset.stage);
+                    isStartingStep = true;
+                    showProcessStepModal(process.id, stage);
+                });
+            });
+
+            const endButtons = card.querySelectorAll('.end-stage-btn');
+            endButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const stage = parseInt(button.dataset.stage);
+                    isStartingStep = false;
                     showProcessStepModal(process.id, stage);
                 });
             });
@@ -807,6 +828,7 @@
                 const stageNum = parseInt(stageId);
                 const isCompleted = process[`stage${stageId}End`] !== undefined;
                 const isActive = currentStage === stageNum;
+                const isStarted = process[`stage${stageId}Start`] !== undefined;
                 
                 let stageContent = `<div class="process-step ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}">`;
                 stageContent += `<h4>${stageId}. ${stageData.name}</h4>`;
@@ -818,10 +840,20 @@
                     stageContent += `<div class="stage-time-info">
                         <div>Tempo: ${duration}</div>
                     </div>`;
+                } else if (isActive && isStarted) {
+                    // Etapa ativa e iniciada - mostrar botão de finalizar
+                    stageContent += `<div class="step-actions">
+                        <button class="btn danger-btn end-stage-btn" data-stage="${stageId}">
+                            ${stageData.endText}
+                        </button>
+                    </div>`;
                 } else if (isActive) {
-                    stageContent += `<button class="btn primary-btn stage-action-btn" data-stage="${stageId}">
-                        ${stageData.buttonText}
-                    </button>`;
+                    // Etapa ativa mas não iniciada - mostrar botão de iniciar
+                    stageContent += `<div class="step-actions">
+                        <button class="btn primary-btn start-stage-btn" data-stage="${stageId}">
+                            ${stageData.startText}
+                        </button>
+                    </div>`;
                 }
                 
                 stageContent += `</div>`;
@@ -990,7 +1022,14 @@
                         throw new Error('Nenhuma câmera encontrada. Verifique as permissões.');
                     }
                     
-                    currentCameraIndex = 0;
+                    // Prioriza câmera traseira
+                    const rearCameraIndex = cameraList.findIndex(cam => 
+                        cam.name.toLowerCase().includes('rear') || 
+                        cam.name.toLowerCase().includes('traseira') || 
+                        cam.facing === 'environment'
+                    );
+                    
+                    currentCameraIndex = rearCameraIndex >= 0 ? rearCameraIndex : 0;
                     elements.switchCameraBtn.style.display = cameras.length > 1 ? 'block' : 'none';
                     return qrScanner.start(cameras[currentCameraIndex]);
                 })
@@ -1042,7 +1081,14 @@
                         throw new Error('Nenhuma câmera encontrada');
                     }
                     
-                    currentStepCameraIndex = 0;
+                    // Prioriza câmera traseira
+                    const rearCameraIndex = cameraList.findIndex(cam => 
+                        cam.name.toLowerCase().includes('rear') || 
+                        cam.name.toLowerCase().includes('traseira') || 
+                        cam.facing === 'environment'
+                    );
+                    
+                    currentStepCameraIndex = rearCameraIndex >= 0 ? rearCameraIndex : 0;
                     elements.switchStepCameraBtn.style.display = cameraList.length > 1 ? 'block' : 'none';
                     return stepQrScanner.start(cameraList[currentStepCameraIndex]);
                 })
@@ -1117,7 +1163,7 @@
                         showFeedback('Operador validado com sucesso!', 'success', 'scanFeedback');
                         stopScanner();
                     } else {
-                        if (currentStepModalStage === 2 || currentStepModalStage === 6) {
+                        if (STAGES[currentStepModalStage].needsHelpers && isStartingStep) {
                             addHelperToList(employeeData);
                         } else {
                             elements.stepOperatorName.textContent = employeeData.nome;
@@ -1163,7 +1209,7 @@
         }
 
         function checkHelpersList() {
-            if (currentStepModalStage === 2 || currentStepModalStage === 6) {
+            if (STAGES[currentStepModalStage].needsHelpers && isStartingStep) {
                 elements.confirmStepBtn.disabled = elements.helpersList.children.length === 0;
             }
         }
@@ -1226,17 +1272,25 @@
             if (!process) return;
             
             resetProcessStepForm();
-            elements.processStepTitle.textContent = `Etapa ${stage} - ${STAGES[stage].name}`;
+            
+            if (isStartingStep) {
+                elements.processStepTitle.textContent = `Iniciar ${STAGES[stage].name}`;
+                elements.confirmStepBtn.textContent = STAGES[stage].startText;
+                
+                if (STAGES[stage].needsHelpers) {
+                    elements.helpersList.style.display = 'block';
+                } else {
+                    elements.helpersList.style.display = 'none';
+                }
+            } else {
+                elements.processStepTitle.textContent = `Finalizar ${STAGES[stage].name}`;
+                elements.confirmStepBtn.textContent = STAGES[stage].endText;
+                elements.helpersList.style.display = 'none';
+            }
+            
             elements.processDtNumber.textContent = process.dtNumber;
             elements.processVehicleType.textContent = process.vehicleType;
             elements.processDockNumber.textContent = process.dock;
-            
-            if (stage == 2 || stage == 6) {
-                elements.helpersList.style.display = 'block';
-                elements.confirmStepBtn.textContent = 'Confirmar Ajudantes';
-            } else {
-                elements.confirmStepBtn.textContent = 'Iniciar Etapa';
-            }
             
             showModal(elements.processStepModal);
         }
@@ -1252,51 +1306,56 @@
             const updates = {};
             const now = firebase.database.ServerValue.TIMESTAMP;
             
-            if ((currentStepModalStage == 2 || currentStepModalStage == 6) && elements.helpersList.children.length === 0) {
-                showFeedback('Adicione pelo menos um ajudante', 'error', 'processStepFeedback');
-                return;
-            }
-            
-            if (currentStepModalStage != 2 && currentStepModalStage != 6 && !elements.stepOperatorName.textContent) {
-                showFeedback('Escaneie o QR Code do operador', 'error', 'processStepFeedback');
-                return;
-            }
+            if (isStartingStep) {
+                // Iniciando uma etapa
+                if (STAGES[currentStepModalStage].needsHelpers && elements.helpersList.children.length === 0) {
+                    showFeedback('Adicione pelo menos um ajudante', 'error', 'processStepFeedback');
+                    return;
+                }
+                
+                if (!STAGES[currentStepModalStage].needsHelpers && !elements.stepOperatorName.textContent) {
+                    showFeedback('Escaneie o QR Code do operador', 'error', 'processStepFeedback');
+                    return;
+                }
 
-            // Finaliza a etapa atual
-            updates[`stage${currentStepModalStage}End`] = now;
-            
-            // Adiciona ajudantes se for etapa 2 ou 6
-            if (currentStepModalStage == 2 || currentStepModalStage == 6) {
-                const helpers = [];
-                Array.from(elements.helpersList.children).forEach(item => {
-                    helpers.push(item.textContent.trim().split(' (')[0]);
-                });
-                updates[`stage${currentStepModalStage}Helpers`] = helpers;
+                updates[`stage${currentStepModalStage}Start`] = now;
+                
+                if (STAGES[currentStepModalStage].needsHelpers) {
+                    const helpers = [];
+                    Array.from(elements.helpersList.children).forEach(item => {
+                        helpers.push(item.textContent.trim().split(' (')[0]);
+                    });
+                    updates[`stage${currentStepModalStage}Helpers`] = helpers;
+                } else {
+                    updates[`stage${currentStepModalStage}Operator`] = elements.stepOperatorName.textContent;
+                }
             } else {
-                updates[`stage${currentStepModalStage}Operator`] = elements.stepOperatorName.textContent;
-            }
-            
-            // Se não for a última etapa, inicia a próxima
-            if (currentStepModalStage < 6) {
-                updates[`stage${currentStepModalStage + 1}Start`] = now;
-            } else {
-                updates.status = 'completed';
-                updates.completedAt = now;
-            }
-            
-            // Calcula tempo de espera entre etapas
-            if (currentStepModalStage > 1) {
-                const prevStageEnd = process[`stage${currentStepModalStage - 1}End`] || now;
-                updates[`waitTime${currentStepModalStage - 1}_${currentStepModalStage}`] = now - prevStageEnd;
+                // Finalizando uma etapa
+                updates[`stage${currentStepModalStage}End`] = now;
+                
+                // Se não for a última etapa, inicia a próxima
+                if (currentStepModalStage < 6) {
+                    updates[`stage${currentStepModalStage + 1}Start`] = now;
+                } else {
+                    updates.status = 'completed';
+                    updates.completedAt = now;
+                }
+                
+                // Calcula tempo de espera entre etapas
+                if (currentStepModalStage > 1) {
+                    const prevStageEnd = process[`stage${currentStepModalStage - 1}End`] || now;
+                    updates[`waitTime${currentStepModalStage - 1}_${currentStepModalStage}`] = now - prevStageEnd;
+                }
             }
             
             elements.confirmStepBtn.disabled = true;
 
             db.ref(`processes/${currentStepModalProcessId}`).update(updates)
                 .then(() => {
-                    showFeedback(`Etapa ${currentStepModalStage} registrada com sucesso!`, 'success', 'processStepFeedback');
+                    const action = isStartingStep ? 'iniciada' : 'finalizada';
+                    showFeedback(`Etapa ${currentStepModalStage} ${action} com sucesso!`, 'success', 'processStepFeedback');
                     
-                    if (currentStepModalStage === 6) {
+                    if (currentStepModalStage === 6 && !isStartingStep) {
                         saveProcessHistory(currentStepModalProcessId);
                     }
                     
