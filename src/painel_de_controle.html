@@ -4,77 +4,83 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel de Controle - Sistema PA</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../css/painel_de_controle.css">
 </head>
 <body>
     <div class="dashboard-container">
         <!-- Sidebar -->
+         <button class="hamburger-btn" id="hamburgerBtn">
+                <i class="fas fa-bars"></i>
+            </button>
         <nav class="sidebar">
             <div class="sidebar-header">
                 <img src="../img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo PA" class="sidebar-logo">
                 <h2>Sistema PA</h2>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="dashboard.html"><i class="fas fa-home"></i> Início</a></li>
-                <li><a href="#"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                <li><a href="cadastro_colaborador.html"><i class="fas fa-users"></i> Cadastrar Funcionários</a></li>
-                <li><a href="buscar_funcionarios.html"><i class="fas fa-search"></i> Buscar Funcionários</a></li>
-                <li class="active"><a href="painel_de_controle.html"><i class="fa fa-tasks"></i> Painel De Controle</a></li>
-                <li><a href="historico.html"><i class="fas fa-history"></i> Histórico</a></li>
-                <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
-            </ul>
-        </nav>
+                        <li><a href="dashboard.html"><i class="fas fa-home"></i> Início</a></li>
+                        <li><a href="#"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                        <li><a href="cadastro_colaborador.html"><i class="fas fa-users"></i> Cadastrar Funcionários</a></li>
+                        <li><a href="buscar_funcionarios.html"><i class="fas fa-search"></i> Buscar Funcionários</a></li>
+                        <li class="active" ><a href="painel_de_controle.html"><i class="fa fa-tasks"></i> Painel De Controle</a></li>
+                        <li><a href="historico.html"><i class="fas fa-history"></i> Histórico</a></li>
+                        <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+                    </ul>
+                </nav>
+
+        <!-- Hamburger Button -->
+        <button class="hamburger-btn" id="hamburgerBtn">
+            <i class="fas fa-bars"></i>
+        </button>
 
         <!-- Main Content -->
         <main class="main-content">
             <header class="main-header">
-                <h1>Painel de Controle</h1>
+                <h1>Painel de Controle - Shipment</h1>
                 <div class="user-info">
                     <span id="currentUser">Usuário Logado</span>
                 </div>
             </header>
 
-            <button class="refresh-button" id="refreshBtn">
-                <i class="fas fa-sync-alt"></i> Atualizar Dados
-            </button>
+            <!-- Filter Section -->
+            <section class="filter-section">
+                <h2 class="filter-title">Filtrar por tipo de operação:</h2>
+                <div class="filter-options">
+                    <button class="filter-btn active" data-type="all">Todos</button>
+                    <button class="filter-btn" data-type="carregamento">Carregamento</button>
+                    <button class="filter-btn" data-type="cliente_retira">Cliente Retira</button>
+                </div>
+            </section>
 
-            <!-- Seção de Métricas de Tempo -->
-            <h2 class="section-title">Métricas de Tempo</h2>
-            <div class="time-metrics-container">
-                <div class="time-metric-card">
-                    <div class="metric-header">
-                        <i class="fas fa-truck-loading"></i>
-                        <h3>Tempo Médio de Carregamento</h3>
-                    </div>
-                    <div class="metric-value" id="avgLoadingTime">00:00:00</div>
-                    <div class="metric-description">Tempo desde o início até o fim do carregamento</div>
+            <!-- Average Time Section -->
+            <section id="averageTimeSection">
+                <h2 class="active-processes-title">Tempos Médios por Etapa</h2>
+                <div class="average-time-section" id="averageTimeCards">
+                    <!-- Cards will be dynamically inserted here -->
                 </div>
-                
-                <div class="time-metric-card">
-                    <div class="metric-header">
-                        <i class="fas fa-clock"></i>
-                        <h3>Tempo Médio de Espera</h3>
-                    </div>
-                    <div class="metric-value" id="avgFreeTime">00:00:00</div>
-                    <div class="metric-description">Tempo entre carregamento e início do enlonamento</div>
-                </div>
-                
-                <div class="time-metric-card">
-                    <div class="metric-header">
-                        <i class="fas fa-ribbon"></i>
-                        <h3>Tempo Médio de Enlonamento</h3>
-                    </div>
-                    <div class="metric-value" id="avgBindingTime">00:00:00</div>
-                    <div class="metric-description">Tempo desde o início até o fim do enlonamento</div>
-                </div>
-            </div>
+            </section>
 
-            <!-- Status das Docas -->
-            <h2 class="section-title">Status das Docas</h2>
-            <div class="docks-container" id="docksContainer">
-                <!-- Docas serão geradas dinamicamente aqui -->
+            <!-- Active Processes Section -->
+            <section id="activeProcessesSection">
+                <h2 class="active-processes-title">Processos em Andamento</h2>
+                <div class="processes-grid" id="processesGrid">
+                    <!-- Process cards will be dynamically inserted here -->
+                </div>
+            </section>
+
+            <!-- Process Details Modal -->
+            <div class="modal" id="processDetailsModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Detalhes do Processo</h2>
+                        <span class="close-modal">&times;</span>
+                    </div>
+                    <div id="processDetailsContent">
+                        <!-- Details will be dynamically inserted here -->
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -83,8 +89,629 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="../js/app.js"></script>
-    <script src="../js/painel_de_controle.js"></script>
-    <script src="../js/tempos_painel.js"></script>
+    <script src="../js/hamb.js"></script>
+    
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAROtfqwCp2i2DVqqQDge6QueiNbmlPzuI",
+            authDomain: "produtividade-pa.firebaseapp.com",
+            projectId: "produtividade-pa",
+            storageBucket: "produtividade-pa.appspot.com",
+            messagingSenderId: "455228218660",
+            appId: "1:455228218660:web:f48ae8a0a03ea1062ca7b1",
+            measurementId: "G-3ER0DB83JV"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Global variables
+        let currentUser = null;
+        let activeFilter = 'all';
+        let processes = {};
+        let completedProcesses = {};
+        let timers = {};
+        let averageTimes = {
+            carregamento: {},
+            cliente_retira: {}
+        };
+
+        // DOM elements
+        const elements = {
+            sidebar: document.getElementById('sidebar'),
+            hamburgerBtn: document.getElementById('hamburgerBtn'),
+            currentUser: document.getElementById('currentUser'),
+            filterBtns: document.querySelectorAll('.filter-btn'),
+            averageTimeCards: document.getElementById('averageTimeCards'),
+            processesGrid: document.getElementById('processesGrid'),
+            processDetailsModal: document.getElementById('processDetailsModal'),
+            processDetailsContent: document.getElementById('processDetailsContent'),
+            logoutBtn: document.getElementById('logoutBtn')
+        };
+
+        // Initialize the dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            firebase.auth().onAuthStateChanged(user => {
+                if (!user) {
+                    window.location.href = 'index.html';
+                } else {
+                    currentUser = user;
+                    elements.currentUser.textContent = user.displayName || user.email;
+                    setupEventListeners();
+                    loadData();
+                }
+            });
+        });
+
+        function setupEventListeners() {
+            // Hamburger button
+            elements.hamburgerBtn.addEventListener('click', () => {
+                elements.sidebar.classList.toggle('visible');
+            });
+
+            // Filter buttons
+            elements.filterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    elements.filterBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    activeFilter = btn.dataset.type;
+                    updateUI();
+                });
+            });
+
+            // Logout button
+            elements.logoutBtn.addEventListener('click', () => {
+                firebase.auth().signOut().then(() => {
+                    window.location.href = 'index.html';
+                });
+            });
+
+            // Close modal
+            document.querySelector('.close-modal').addEventListener('click', () => {
+                elements.processDetailsModal.style.display = 'none';
+            });
+        }
+
+        function loadData() {
+            // Load active processes
+            db.ref('processos').on('value', snapshot => {
+                processes = {};
+                completedProcesses = {}; // Reset completed processes
+                
+                if (snapshot.exists()) {
+                    snapshot.forEach(processSnapshot => {
+                        const processData = processSnapshot.val();
+                        if (processData.status !== 'completed') {
+                            processes[processSnapshot.key] = {
+                                ...processData,
+                                id: processSnapshot.key
+                            };
+                            
+                            // Start timer for in-progress processes
+                            if (!timers[processSnapshot.key] && processData.status === 'in_progress') {
+                                startProcessTimer(processSnapshot.key, processData.startTime || Date.now());
+                            }
+                        } else {
+                            // Add completed processes to our collection
+                            completedProcesses[processSnapshot.key] = transformProcessToHistoryFormat(processData, processSnapshot.key);
+                        }
+                    });
+                }
+                updateUI();
+                calculateAverageTimes(); // Calculate averages after loading
+            });
+
+            // Also keep listening to historico_processos if you use that
+            db.ref('historico_processos').on('value', snapshot => {
+                if (snapshot.exists()) {
+                    snapshot.forEach(processSnapshot => {
+                        completedProcesses[processSnapshot.key] = processSnapshot.val();
+                    });
+                    calculateAverageTimes();
+                }
+            });
+        }
+
+        // Helper function to transform process data to history format
+        function transformProcessToHistoryFormat(processData, processId) {
+            const stepsOrder = getStepsOrder(processData.vehicleType);
+            const historyData = {
+                processId: processId || 'N/A',
+                dtNumber: processData.dtNumber,
+                vehicleType: processData.vehicleType,
+                dockNumber: processData.dockNumber,
+                startTime: processData.startTime,
+                endTime: processData.endTime || firebase.database.ServerValue.TIMESTAMP,
+                createdBy: processData.createdBy,
+                steps: {},
+                totalDuration: (processData.endTime || Date.now()) - processData.startTime
+            };
+            
+            stepsOrder.forEach(step => {
+                if (processData[step]) {
+                    historyData.steps[step] = {
+                        name: getStepName(step),
+                        status: processData[step].status,
+                        startTime: processData[step].startTime,
+                        endTime: processData[step].endTime,
+                        duration: processData[step].duration,
+                        waitTime: processData[step].waitTime,
+                        operator: processData[step].operator,
+                        assistants: processData[step].assistants
+                    };
+                }
+            });
+            
+            return historyData;
+        }
+
+        function calculateAverageTimes() {
+            // Reset averages
+            averageTimes = {
+                carregamento: {},
+                cliente_retira: {}
+            };
+
+            // Group processes by type
+            const carregamentoProcesses = Object.values(completedProcesses).filter(p => p.vehicleType === 'carregamento');
+            const clienteRetiraProcesses = Object.values(completedProcesses).filter(p => p.vehicleType === 'cliente_retira');
+
+            // Calculate averages for carregamento
+            if (carregamentoProcesses.length > 0) {
+                const steps = ['vistoria', 'abertura', 'separacao', 'faturamento', 'carregamento', 'fechamento'];
+                
+                // Step durations
+                steps.forEach(step => {
+                    const validProcesses = carregamentoProcesses.filter(p => p.steps[step]?.duration);
+                    if (validProcesses.length > 0) {
+                        const total = validProcesses.reduce((sum, p) => sum + p.steps[step].duration, 0);
+                        averageTimes.carregamento[step] = Math.round(total / validProcesses.length);
+                    }
+                });
+
+                // Wait times between steps
+                const waitTimes = {
+                    'vistoria_abertura': carregamentoProcesses.filter(p => p.steps.abertura?.waitTime).map(p => p.steps.abertura.waitTime),
+                    'abertura_separacao': carregamentoProcesses.filter(p => p.steps.separacao?.waitTime).map(p => p.steps.separacao.waitTime),
+                    'separacao_faturamento': carregamentoProcesses.filter(p => p.steps.faturamento?.waitTime).map(p => p.steps.faturamento.waitTime),
+                    'faturamento_carregamento': carregamentoProcesses.filter(p => p.steps.carregamento?.waitTime).map(p => p.steps.carregamento.waitTime),
+                    'carregamento_fechamento': carregamentoProcesses.filter(p => p.steps.fechamento?.waitTime).map(p => p.steps.fechamento.waitTime)
+                };
+
+                Object.entries(waitTimes).forEach(([key, times]) => {
+                    if (times.length > 0) {
+                        const total = times.reduce((sum, t) => sum + t, 0);
+                        averageTimes.carregamento[key] = Math.round(total / times.length);
+                    }
+                });
+            }
+
+            // Calculate averages for cliente_retira
+            if (clienteRetiraProcesses.length > 0) {
+                const steps = ['vistoria', 'separacao'];
+                
+                // Step durations
+                steps.forEach(step => {
+                    const validProcesses = clienteRetiraProcesses.filter(p => p.steps[step]?.duration);
+                    if (validProcesses.length > 0) {
+                        const total = validProcesses.reduce((sum, p) => sum + p.steps[step].duration, 0);
+                        averageTimes.cliente_retira[step] = Math.round(total / validProcesses.length);
+                    }
+                });
+
+                // Wait times between steps
+                const waitTimes = {
+                    'vistoria_separacao': clienteRetiraProcesses.filter(p => p.steps.separacao?.waitTime).map(p => p.steps.separacao.waitTime)
+                };
+
+                Object.entries(waitTimes).forEach(([key, times]) => {
+                    if (times.length > 0) {
+                        const total = times.reduce((sum, t) => sum + t, 0);
+                        averageTimes.cliente_retira[key] = Math.round(total / times.length);
+                    }
+                });
+            }
+
+            updateAverageTimeCards();
+        }
+
+        function updateAverageTimeCards() {
+    elements.averageTimeCards.innerHTML = '';
+
+    if (activeFilter === 'all' || activeFilter === 'carregamento') {
+        // Add cards for carregamento
+        const carregamentoSteps = [
+            { key: 'vistoria', name: 'Vistoria' },
+            { key: 'vistoria_abertura', name: 'Espera até Abertura' },
+            { key: 'abertura', name: 'Abertura' },
+            { key: 'abertura_separacao', name: 'Espera até Separação' },
+            { key: 'separacao', name: 'Separação' },
+            { key: 'separacao_faturamento', name: 'Espera até Faturamento' },
+            { key: 'faturamento', name: 'Faturamento' },
+            { key: 'faturamento_carregamento', name: 'Espera até Carregamento' },
+            { key: 'carregamento', name: 'Carregamento' },
+            { key: 'carregamento_fechamento', name: 'Espera até Fechamento' }, // Este é o card que estava faltando
+            { key: 'fechamento', name: 'Fechamento' }
+        ];
+
+        carregamentoSteps.forEach(step => {
+            if (averageTimes.carregamento[step.key]) {
+                addAverageTimeCard(step.name, averageTimes.carregamento[step.key], 'carregamento');
+            }
+        });
+    }
+
+    if (activeFilter === 'all' || activeFilter === 'cliente_retira') {
+        // Add cards for cliente_retira
+        const clienteRetiraSteps = [
+            { key: 'vistoria', name: 'Vistoria' },
+            { key: 'vistoria_separacao', name: 'Espera até Separação' },
+            { key: 'separacao', name: 'Separação' }
+        ];
+
+        clienteRetiraSteps.forEach(step => {
+            if (averageTimes.cliente_retira[step.key]) {
+                addAverageTimeCard(step.name, averageTimes.cliente_retira[step.key], 'cliente-retira');
+            }
+        });
+    }
+}
+
+        function addAverageTimeCard(title, seconds, type) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            const formattedTime = `${minutes}min ${remainingSeconds}seg`;
+
+            const card = document.createElement('div');
+            card.className = `average-time-card ${type}`;
+            card.innerHTML = `
+                <h3>${title}</h3>
+                <div class="time">${formattedTime}</div>
+            `;
+            elements.averageTimeCards.appendChild(card);
+        }
+
+        function updateUI() {
+            renderProcessCards();
+            updateAverageTimeCards();
+        }
+
+        function renderProcessCards() {
+            elements.processesGrid.innerHTML = '';
+
+            const filteredProcesses = Object.values(processes).filter(process => {
+                if (activeFilter === 'all') return true;
+                return process.vehicleType === activeFilter;
+            });
+
+            if (filteredProcesses.length === 0) {
+                const message = document.createElement('div');
+                message.className = 'feedback info';
+                message.textContent = 'Nenhum processo ativo encontrado.';
+                elements.processesGrid.appendChild(message);
+                return;
+            }
+
+            filteredProcesses.forEach(process => {
+                const card = createProcessCard(process);
+                elements.processesGrid.appendChild(card);
+            });
+        }
+
+        function createProcessCard(process) {
+            const card = document.createElement('div');
+            card.className = `process-card ${process.vehicleType === 'carregamento' ? 'carregamento' : 'cliente-retira'}`;
+            card.dataset.processId = process.id;
+
+            // Process header
+            const header = document.createElement('div');
+            header.className = 'process-header';
+            header.innerHTML = `
+                <div class="process-dt">DT: ${process.dtNumber}</div>
+                <div class="process-type">${process.vehicleType === 'carregamento' ? 'Carregamento' : 'Cliente Retira'}</div>
+            `;
+
+            // Process body
+            const body = document.createElement('div');
+            body.className = 'process-body';
+
+            // Process info
+            const info = document.createElement('div');
+            info.className = 'process-info';
+            info.innerHTML = `
+                <div class="process-info-item">
+                    <strong>Doca</strong>
+                    <span>${process.dockNumber}</span>
+                </div>
+                <div class="process-info-item">
+                    <strong>Tipo</strong>
+                    <span>${process.vehicleType === 'carregamento' ? 'Carregamento' : 'Cliente Retira'}</span>
+                </div>
+                <div class="process-info-item">
+                    <strong>Início</strong>
+                    <span>${formatDateTime(process.startTime)}</span>
+                </div>
+                <div class="process-info-item">
+                    <strong>Tempo Total</strong>
+                    <span id="total-time-${process.id}">${formatTime((Date.now() - process.startTime) / 1000)}</span>
+                </div>
+            `;
+            body.appendChild(info);
+
+            // Current step
+            if (process.currentStep) {
+                const currentStepDiv = document.createElement('div');
+                currentStepDiv.className = 'current-step';
+                
+                const stepData = process[process.currentStep];
+                const stepName = getStepName(process.currentStep);
+                
+                currentStepDiv.innerHTML = `
+                    <h4>
+                        <span>${stepName}</span>
+                        <span class="timer" id="step-timer-${process.id}">${stepData.startTime ? formatTime((Date.now() - stepData.startTime) / 1000) : '00:00:00'}</span>
+                    </h4>
+                    ${stepData.operator ? `<div class="operator">Operador: ${stepData.operator}</div>` : ''}
+                `;
+                body.appendChild(currentStepDiv);
+            }
+
+            // Completed steps
+            const stepsOrder = getStepsOrder(process.vehicleType);
+            const currentStepIndex = process.currentStep ? stepsOrder.indexOf(process.currentStep) : stepsOrder.length;
+            const completedSteps = stepsOrder.slice(0, currentStepIndex).filter(step => process[step]?.status === 'completed');
+
+            if (completedSteps.length > 0) {
+                const completedStepsDiv = document.createElement('div');
+                completedStepsDiv.className = 'completed-steps';
+                
+                let stepsHtml = '<h4>Etapas Concluídas</h4>';
+                completedSteps.forEach(step => {
+                    const stepData = process[step];
+                    stepsHtml += `
+                        <div class="step-item">
+                            <span class="step-name">${getStepName(step)}</span>
+                            <span class="step-time">${formatTime(stepData.duration)}</span>
+                        </div>
+                    `;
+                });
+                
+                completedStepsDiv.innerHTML = stepsHtml;
+                body.appendChild(completedStepsDiv);
+            }
+
+            // Next step
+            if (process.currentStep && currentStepIndex < stepsOrder.length - 1) {
+                const nextStepDiv = document.createElement('div');
+                nextStepDiv.className = 'next-step';
+                nextStepDiv.innerHTML = `
+                    <div class="step-item">
+                        <span class="step-name"><strong>Próxima Etapa:</strong> ${getStepName(stepsOrder[currentStepIndex + 1])}</span>
+                    </div>
+                `;
+                body.appendChild(nextStepDiv);
+            }
+
+            // Process footer
+            const footer = document.createElement('div');
+            footer.className = 'process-footer';
+            footer.innerHTML = `
+                <div class="total-time">Total: <span id="total-time-footer-${process.id}">${formatTime((Date.now() - process.startTime) / 1000)}</span></div>
+                <button class="view-details-btn" data-process-id="${process.id}">Ver Detalhes</button>
+            `;
+            body.appendChild(footer);
+
+            // Assemble card
+            card.appendChild(header);
+            card.appendChild(body);
+
+            // Add event listener to details button
+            card.querySelector('.view-details-btn').addEventListener('click', (e) => {
+                showProcessDetails(e.target.dataset.processId);
+            });
+
+            return card;
+        }
+
+        function showProcessDetails(processId) {
+            const process = processes[processId];
+            if (!process) return;
+
+            const stepsOrder = getStepsOrder(process.vehicleType);
+            const currentStepIndex = process.currentStep ? stepsOrder.indexOf(process.currentStep) : stepsOrder.length;
+
+            let detailsHtml = `
+                <div class="process-details">
+                    <div>
+                        <div class="details-section">
+                            <h3>Informações do Processo</h3>
+                            <div class="details-item">
+                                <strong>DT:</strong>
+                                <span>${process.dtNumber}</span>
+                            </div>
+                            <div class="details-item">
+                                <strong>Tipo:</strong>
+                                <span>${process.vehicleType === 'carregamento' ? 'Carregamento' : 'Cliente Retira'}</span>
+                            </div>
+                            <div class="details-item">
+                                <strong>Doca:</strong>
+                                <span>${process.dockNumber}</span>
+                            </div>
+                            <div class="details-item">
+                                <strong>Início:</strong>
+                                <span>${formatDateTime(process.startTime)}</span>
+                            </div>
+                            <div class="details-item">
+                                <strong>Tempo Total:</strong>
+                                <span>${formatTime((Date.now() - process.startTime) / 1000)}</span>
+                            </div>
+                        </div>
+
+                        <div class="details-section">
+                            <h3>Etapa Atual</h3>
+                            ${process.currentStep ? `
+                                <div class="details-item">
+                                    <strong>Etapa:</strong>
+                                    <span>${getStepName(process.currentStep)}</span>
+                                </div>
+                                <div class="details-item">
+                                    <strong>Status:</strong>
+                                    <span>Em Andamento</span>
+                                </div>
+                                <div class="details-item">
+                                    <strong>Tempo:</strong>
+                                    <span>${process[process.currentStep].startTime ? formatTime((Date.now() - process[process.currentStep].startTime) / 1000) : '00:00:00'}</span>
+                                </div>
+                                ${process[process.currentStep].operator ? `
+                                    <div class="details-item">
+                                        <strong>Operador:</strong>
+                                        <span>${process[process.currentStep].operator}</span>
+                                    </div>
+                                ` : ''}
+                            ` : `
+                                <div class="details-item">
+                                    <span>Processo concluído</span>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="details-section">
+                            <h3>Linha do Tempo</h3>
+                            <div class="timeline">
+            `;
+
+            stepsOrder.forEach((step, index) => {
+                const stepData = process[step];
+                const isCompleted = stepData?.status === 'completed';
+                const isCurrent = process.currentStep === step;
+                const isPending = index > currentStepIndex;
+
+                detailsHtml += `
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-step">${getStepName(step)}</div>
+                            <div class="timeline-info">
+                                ${isCompleted ? `
+                                    <span>${formatTime(stepData.duration)}</span>
+                                    <span>${formatDateTime(stepData.endTime)}</span>
+                                ` : isCurrent ? `
+                                    <span>Em andamento (${formatTime((Date.now() - stepData.startTime) / 1000)})</span>
+                                ` : isPending ? `
+                                    <span>Pendente</span>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Add wait time if applicable
+                if (index < stepsOrder.length - 1 && isCompleted) {
+                    const nextStep = stepsOrder[index + 1];
+                    const nextStepData = process[nextStep];
+                    if (nextStepData?.waitTime) {
+                        detailsHtml += `
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-step">Espera</div>
+                                    <div class="timeline-info">
+                                        <span>${formatTime(nextStepData.waitTime)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            });
+
+            detailsHtml += `
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            elements.processDetailsContent.innerHTML = detailsHtml;
+            elements.processDetailsModal.style.display = 'flex';
+        }
+
+        function startProcessTimer(processId, startTime) {
+            if (timers[processId]) clearInterval(timers[processId]);
+            
+            const updateTimer = () => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const timerElement = document.getElementById(`total-time-${processId}`);
+                const footerTimerElement = document.getElementById(`total-time-footer-${processId}`);
+                
+                if (timerElement) timerElement.textContent = formatTime(elapsed);
+                if (footerTimerElement) footerTimerElement.textContent = formatTime(elapsed);
+            };
+            
+            updateTimer();
+            timers[processId] = setInterval(updateTimer, 1000);
+        }
+
+        function startStepTimer(processId, stepStartTime) {
+            if (timers[`${processId}-step`]) clearInterval(timers[`${processId}-step`]);
+            
+            const updateStepTimer = () => {
+                const elapsed = Math.floor((Date.now() - stepStartTime) / 1000);
+                const stepTimerElement = document.getElementById(`step-timer-${processId}`);
+                if (stepTimerElement) stepTimerElement.textContent = formatTime(elapsed);
+            };
+            
+            updateStepTimer();
+            timers[`${processId}-step`] = setInterval(updateStepTimer, 1000);
+        }
+
+        // Helper functions
+        function getStepName(stepId) {
+            const stepNames = {
+                'vistoria': 'Vistoria',
+                'abertura': 'Abertura do Caminhão',
+                'separacao': 'Separação',
+                'faturamento': 'Faturamento',
+                'carregamento': 'Carregamento',
+                'fechamento': 'Fechamento do Caminhão'
+            };
+            return stepNames[stepId] || stepId;
+        }
+
+        function getStepsOrder(vehicleType) {
+            if (vehicleType === 'cliente_retira') {
+                return ['vistoria', 'separacao'];
+            } else if (vehicleType === 'carregamento') {
+                return ['vistoria', 'abertura', 'separacao', 'faturamento', 'carregamento', 'fechamento'];
+            }
+            return [];
+        }
+
+        function formatTime(seconds) {
+            if (!seconds) return '00:00:00';
+            
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function formatDateTime(timestamp) {
+            if (!timestamp) return '--/--/---- --:--';
+            
+            const date = new Date(timestamp);
+            return date.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    </script>
 </body>
 </html>
