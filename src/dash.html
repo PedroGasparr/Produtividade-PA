@@ -3,44 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Controle - Sistema PA</title>
+    <title>Dashboard - Sistema PA</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../css/painel_de_controle.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js">
+    <link rel="stylesheet" href="../css/dash.css">
 </head>
 <body>
     <div class="dashboard-container">
         <!-- Sidebar -->
-         <button class="hamburger-btn" id="hamburgerBtn">
-                <i class="fas fa-bars"></i>
-            </button>
-        <nav class="sidebar">
+        <button class="hamburger-btn" id="hamburgerBtn">
+            <i class="fas fa-bars"></i>
+        </button>
+        <nav class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <img src="../img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo PA" class="sidebar-logo">
                 <h2>Sistema PA</h2>
             </div>
             <ul class="sidebar-menu">
-                        <li><a href="dashboard.html"><i class="fas fa-home"></i> Início</a></li>
-                        <li><a href="dash.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                        <li><a href="cadastro_colaborador.html"><i class="fas fa-users"></i> Cadastrar Funcionários</a></li>
-                        <li><a href="buscar_funcionarios.html"><i class="fas fa-search"></i> Buscar Funcionários</a></li>
-                        <li class="active" ><a href="painel_de_controle.html"><i class="fa fa-tasks"></i> Painel De Controle</a></li>
-                        <li><a href="historico.html"><i class="fas fa-history"></i> Histórico</a></li>
-                        <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
-                    </ul>
-                </nav>
-
-        <!-- Hamburger Button -->
-        <button class="hamburger-btn" id="hamburgerBtn">
-            <i class="fas fa-bars"></i>
-        </button>
+                <li><a href="dashboard.html"><i class="fas fa-home"></i> <span>Início</span></a></li>
+                <li class="active"><a href="#"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a></li>
+                <li><a href="cadastro_colaborador.html"><i class="fas fa-users"></i> <span>Cadastrar Funcionários</span></a></li>
+                <li><a href="buscar_funcionarios.html"><i class="fas fa-search"></i> <span>Buscar Funcionários</span></a></li>
+                <li><a href="painel_de_controle.html"><i class="fa fa-tasks"></i> <span>Painel De Controle</span></a></li>
+                <li><a href="historico.html"><i class="fas fa-history"></i> <span>Histórico</span></a></li>
+                <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a></li>
+            </ul>
+        </nav>
 
         <!-- Main Content -->
         <main class="main-content">
             <header class="main-header">
-                <h1>Painel de Controle - Shipment</h1>
+                <h1>Dashboard - Shipment</h1>
                 <div class="user-info">
                     <span id="currentUser">Usuário Logado</span>
+                    <div class="user-avatar" id="userAvatar">JL</div>
                 </div>
             </header>
 
@@ -54,20 +51,126 @@
                 </div>
             </section>
 
-            <!-- Average Time Section -->
-            <section id="averageTimeSection">
-                <h2 class="active-processes-title">Tempos Médios por Etapa</h2>
-                <div class="average-time-section" id="averageTimeCards">
-                    <!-- Cards will be dynamically inserted here -->
+            <!-- Overview Cards -->
+            <section class="cards-container">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Processos Ativos</h3>
+                        <div class="card-icon primary">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                    </div>
+                    <div class="card-value" id="activeProcessesCount">0</div>
+                    <div class="card-footer">
+                        <i class="fas fa-arrow-up positive"></i>
+                        <span>5 desde ontem</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Tempo Médio (Carregamento)</h3>
+                        <div class="card-icon warning">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <div class="card-value" id="avgTimeCarregamento">00:00:00</div>
+                    <div class="card-footer">
+                        <i class="fas fa-arrow-down negative"></i>
+                        <span>10% menos que ontem</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Tempo Médio (Cliente Retira)</h3>
+                        <div class="card-icon success">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <div class="card-value" id="avgTimeClienteRetira">00:00:00</div>
+                    <div class="card-footer">
+                        <i class="fas fa-arrow-up positive"></i>
+                        <span>15% mais que ontem</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Eficiência</h3>
+                        <div class="card-icon danger">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="card-value" id="efficiencyRate">0%</div>
+                    <div class="card-footer">
+                        <i class="fas fa-arrow-up positive"></i>
+                        <span>2% mais que ontem</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="charts-container">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Tempos por Etapa (Carregamento)</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="carregamentoChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Tempos por Etapa (Cliente Retira)</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="clienteRetiraChart"></canvas>
+                    </div>
                 </div>
             </section>
 
             <!-- Active Processes Section -->
-            <section id="activeProcessesSection">
-                <h2 class="active-processes-title">Processos em Andamento</h2>
+            <section class="processes-table">
+                <div class="table-header">
+                    <h3 class="table-title">Processos em Andamento</h3>
+                    <div class="table-actions">
+                        <button class="btn btn-primary" id="refreshBtn">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                    </div>
+                </div>
                 <div class="processes-grid" id="processesGrid">
                     <!-- Process cards will be dynamically inserted here -->
                 </div>
+            </section>
+
+            <!-- Recent History Section -->
+            <section class="processes-table">
+                <div class="table-header">
+                    <h3 class="table-title">Histórico Recente</h3>
+                    <div class="table-actions">
+                        <button class="btn btn-secondary" id="viewAllHistoryBtn">
+                            <i class="fas fa-history"></i> Ver Tudo
+                        </button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>DT</th>
+                            <th>Tipo</th>
+                            <th>Doca</th>
+                            <th>Duração</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentHistoryTable">
+                        <!-- Recent history will be dynamically inserted here -->
+                    </tbody>
+                </table>
             </section>
 
             <!-- Process Details Modal -->
@@ -89,6 +192,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="../js/hamb.js"></script>
     
     <script>
@@ -117,18 +221,27 @@
             carregamento: {},
             cliente_retira: {}
         };
+        let carregamentoChart = null;
+        let clienteRetiraChart = null;
 
         // DOM elements
         const elements = {
             sidebar: document.getElementById('sidebar'),
             hamburgerBtn: document.getElementById('hamburgerBtn'),
             currentUser: document.getElementById('currentUser'),
+            userAvatar: document.getElementById('userAvatar'),
             filterBtns: document.querySelectorAll('.filter-btn'),
-            averageTimeCards: document.getElementById('averageTimeCards'),
+            activeProcessesCount: document.getElementById('activeProcessesCount'),
+            avgTimeCarregamento: document.getElementById('avgTimeCarregamento'),
+            avgTimeClienteRetira: document.getElementById('avgTimeClienteRetira'),
+            efficiencyRate: document.getElementById('efficiencyRate'),
             processesGrid: document.getElementById('processesGrid'),
+            recentHistoryTable: document.getElementById('recentHistoryTable'),
             processDetailsModal: document.getElementById('processDetailsModal'),
             processDetailsContent: document.getElementById('processDetailsContent'),
-            logoutBtn: document.getElementById('logoutBtn')
+            logoutBtn: document.getElementById('logoutBtn'),
+            refreshBtn: document.getElementById('refreshBtn'),
+            viewAllHistoryBtn: document.getElementById('viewAllHistoryBtn')
         };
 
         // Initialize the dashboard
@@ -139,8 +252,18 @@
                 } else {
                     currentUser = user;
                     elements.currentUser.textContent = user.displayName || user.email;
+                    
+                    // Set user avatar initials
+                    if (user.displayName) {
+                        const initials = user.displayName.split(' ').map(n => n[0]).join('').toUpperCase();
+                        elements.userAvatar.textContent = initials;
+                    } else if (user.email) {
+                        elements.userAvatar.textContent = user.email[0].toUpperCase();
+                    }
+                    
                     setupEventListeners();
                     loadData();
+                    initializeCharts();
                 }
             });
         });
@@ -168,10 +291,107 @@
                 });
             });
 
+            // Refresh button
+            elements.refreshBtn.addEventListener('click', () => {
+                loadData();
+            });
+
+            // View all history button
+            elements.viewAllHistoryBtn.addEventListener('click', () => {
+                window.location.href = 'historico.html';
+            });
+
             // Close modal
             document.querySelector('.close-modal').addEventListener('click', () => {
                 elements.processDetailsModal.style.display = 'none';
             });
+        }
+
+        function initializeCharts() {
+            const carregamentoCtx = document.getElementById('carregamentoChart').getContext('2d');
+            const clienteRetiraCtx = document.getElementById('clienteRetiraChart').getContext('2d');
+            
+            carregamentoChart = new Chart(carregamentoCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Vistoria', 'Abertura', 'Separação', 'Faturamento', 'Carregamento', 'Fechamento'],
+                    datasets: [{
+                        label: 'Tempo Médio (min)',
+                        data: [],
+                        backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                        borderColor: 'rgba(52, 152, 219, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Tempo (minutos)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            clienteRetiraChart = new Chart(clienteRetiraCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Vistoria', 'Separação'],
+                    datasets: [{
+                        label: 'Tempo Médio (min)',
+                        data: [],
+                        backgroundColor: 'rgba(39, 174, 96, 0.7)',
+                        borderColor: 'rgba(39, 174, 96, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Tempo (minutos)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            // Update carregamento chart
+            if (averageTimes.carregamento) {
+                const carregamentoData = [
+                    averageTimes.carregamento.vistoria ? Math.round(averageTimes.carregamento.vistoria / 60) : 0,
+                    averageTimes.carregamento.abertura ? Math.round(averageTimes.carregamento.abertura / 60) : 0,
+                    averageTimes.carregamento.separacao ? Math.round(averageTimes.carregamento.separacao / 60) : 0,
+                    averageTimes.carregamento.faturamento ? Math.round(averageTimes.carregamento.faturamento / 60) : 0,
+                    averageTimes.carregamento.carregamento ? Math.round(averageTimes.carregamento.carregamento / 60) : 0,
+                    averageTimes.carregamento.fechamento ? Math.round(averageTimes.carregamento.fechamento / 60) : 0
+                ];
+                
+                carregamentoChart.data.datasets[0].data = carregamentoData;
+                carregamentoChart.update();
+            }
+            
+            // Update cliente_retira chart
+            if (averageTimes.cliente_retira) {
+                const clienteRetiraData = [
+                    averageTimes.cliente_retira.vistoria ? Math.round(averageTimes.cliente_retira.vistoria / 60) : 0,
+                    averageTimes.cliente_retira.separacao ? Math.round(averageTimes.cliente_retira.separacao / 60) : 0
+                ];
+                
+                clienteRetiraChart.data.datasets[0].data = clienteRetiraData;
+                clienteRetiraChart.update();
+            }
         }
 
         function loadData() {
@@ -198,7 +418,13 @@
                             completedProcesses[processSnapshot.key] = transformProcessToHistoryFormat(processData, processSnapshot.key);
                         }
                     });
+                    
+                    // Update active processes count
+                    elements.activeProcessesCount.textContent = Object.keys(processes).length;
+                } else {
+                    elements.activeProcessesCount.textContent = '0';
                 }
+                
                 updateUI();
                 calculateAverageTimes(); // Calculate averages after loading
             });
@@ -210,7 +436,56 @@
                         completedProcesses[processSnapshot.key] = processSnapshot.val();
                     });
                     calculateAverageTimes();
+                    updateRecentHistory();
                 }
+            });
+        }
+
+        function updateRecentHistory() {
+            const recentProcesses = Object.values(completedProcesses)
+                .sort((a, b) => b.endTime - a.endTime)
+                .slice(0, 5);
+            
+            elements.recentHistoryTable.innerHTML = '';
+            
+            if (recentProcesses.length === 0) {
+                elements.recentHistoryTable.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="feedback info">
+                            <i class="fas fa-info-circle"></i> Nenhum processo recente encontrado
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            recentProcesses.forEach(process => {
+                const row = document.createElement('tr');
+                
+                // Calculate total duration in minutes
+                const totalMinutes = Math.round(process.totalDuration / 60000);
+                
+                row.innerHTML = `
+                    <td>${process.dtNumber || 'N/A'}</td>
+                    <td>${process.vehicleType === 'carregamento' ? 'Carregamento' : 'Cliente Retira'}</td>
+                    <td>${process.dockNumber || 'N/A'}</td>
+                    <td>${totalMinutes} min</td>
+                    <td><span class="badge badge-success">Concluído</span></td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm view-history-btn" data-process-id="${process.processId}">
+                            <i class="fas fa-eye"></i> Detalhes
+                        </button>
+                    </td>
+                `;
+                
+                elements.recentHistoryTable.appendChild(row);
+            });
+            
+            // Add event listeners to view buttons
+            document.querySelectorAll('.view-history-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    showProcessDetails(e.target.closest('button').dataset.processId, true);
+                });
             });
         }
 
@@ -286,6 +561,13 @@
                         averageTimes.carregamento[key] = Math.round(total / times.length);
                     }
                 });
+                
+                // Calculate total average time for carregamento
+                if (carregamentoProcesses.length > 0) {
+                    const totalTime = carregamentoProcesses.reduce((sum, p) => sum + p.totalDuration, 0);
+                    const avgTime = Math.round(totalTime / carregamentoProcesses.length);
+                    elements.avgTimeCarregamento.textContent = formatTime(avgTime / 1000);
+                }
             }
 
             // Calculate averages for cliente_retira
@@ -312,70 +594,36 @@
                         averageTimes.cliente_retira[key] = Math.round(total / times.length);
                     }
                 });
+                
+                // Calculate total average time for cliente_retira
+                if (clienteRetiraProcesses.length > 0) {
+                    const totalTime = clienteRetiraProcesses.reduce((sum, p) => sum + p.totalDuration, 0);
+                    const avgTime = Math.round(totalTime / clienteRetiraProcesses.length);
+                    elements.avgTimeClienteRetira.textContent = formatTime(avgTime / 1000);
+                }
             }
-
-            updateAverageTimeCards();
-        }
-
-        function updateAverageTimeCards() {
-    elements.averageTimeCards.innerHTML = '';
-
-    if (activeFilter === 'all' || activeFilter === 'carregamento') {
-        // Add cards for carregamento
-        const carregamentoSteps = [
-            { key: 'vistoria', name: 'Vistoria' },
-            { key: 'vistoria_abertura', name: 'Espera até Abertura' },
-            { key: 'abertura', name: 'Abertura' },
-            { key: 'abertura_separacao', name: 'Espera até Separação' },
-            { key: 'separacao', name: 'Separação' },
-            { key: 'separacao_faturamento', name: 'Espera até Faturamento' },
-            { key: 'faturamento', name: 'Faturamento' },
-            { key: 'faturamento_carregamento', name: 'Espera até Carregamento' },
-            { key: 'carregamento', name: 'Carregamento' },
-            { key: 'carregamento_fechamento', name: 'Espera até Fechamento' }, // Este é o card que estava faltando
-            { key: 'fechamento', name: 'Fechamento' }
-        ];
-
-        carregamentoSteps.forEach(step => {
-            if (averageTimes.carregamento[step.key]) {
-                addAverageTimeCard(step.name, averageTimes.carregamento[step.key], 'carregamento');
+            
+            // Update efficiency rate (example calculation)
+            if (carregamentoProcesses.length > 0 && clienteRetiraProcesses.length > 0) {
+                const targetTimeCarregamento = 45 * 60 * 1000; // 45 minutes target
+                const targetTimeClienteRetira = 20 * 60 * 1000; // 20 minutes target
+                
+                const avgCarregamento = carregamentoProcesses.reduce((sum, p) => sum + p.totalDuration, 0) / carregamentoProcesses.length;
+                const avgClienteRetira = clienteRetiraProcesses.reduce((sum, p) => sum + p.totalDuration, 0) / clienteRetiraProcesses.length;
+                
+                const efficiencyCarregamento = Math.min(100, Math.round((targetTimeCarregamento / avgCarregamento) * 100));
+                const efficiencyClienteRetira = Math.min(100, Math.round((targetTimeClienteRetira / avgClienteRetira) * 100));
+                
+                const overallEfficiency = Math.round((efficiencyCarregamento + efficiencyClienteRetira) / 2);
+                elements.efficiencyRate.textContent = `${overallEfficiency}%`;
             }
-        });
-    }
-
-    if (activeFilter === 'all' || activeFilter === 'cliente_retira') {
-        // Add cards for cliente_retira
-        const clienteRetiraSteps = [
-            { key: 'vistoria', name: 'Vistoria' },
-            { key: 'vistoria_separacao', name: 'Espera até Separação' },
-            { key: 'separacao', name: 'Separação' }
-        ];
-
-        clienteRetiraSteps.forEach(step => {
-            if (averageTimes.cliente_retira[step.key]) {
-                addAverageTimeCard(step.name, averageTimes.cliente_retira[step.key], 'cliente-retira');
-            }
-        });
-    }
-}
-
-        function addAverageTimeCard(title, seconds, type) {
-            const minutes = Math.floor(seconds / 60);
-            const remainingSeconds = seconds % 60;
-            const formattedTime = `${minutes}min ${remainingSeconds}seg`;
-
-            const card = document.createElement('div');
-            card.className = `average-time-card ${type}`;
-            card.innerHTML = `
-                <h3>${title}</h3>
-                <div class="time">${formattedTime}</div>
-            `;
-            elements.averageTimeCards.appendChild(card);
+            
+            updateCharts();
         }
 
         function updateUI() {
             renderProcessCards();
-            updateAverageTimeCards();
+            updateRecentHistory();
         }
 
         function renderProcessCards() {
@@ -389,7 +637,8 @@
             if (filteredProcesses.length === 0) {
                 const message = document.createElement('div');
                 message.className = 'feedback info';
-                message.textContent = 'Nenhum processo ativo encontrado.';
+                message.innerHTML = '<i class="fas fa-info-circle"></i> Nenhum processo ativo encontrado.';
+                message.style.gridColumn = '1 / -1';
                 elements.processesGrid.appendChild(message);
                 return;
             }
@@ -410,7 +659,9 @@
             header.className = 'process-header';
             header.innerHTML = `
                 <div class="process-dt">DT: ${process.dtNumber}</div>
-                <div class="process-type">${process.vehicleType === 'carregamento' ? 'Carregamento' : 'Cliente Retira'}</div>
+                <div class="process-type ${process.vehicleType === 'carregamento' ? 'carregamento' : 'cliente-retira'}">
+                    ${process.vehicleType === 'carregamento' ? 'Carregamento' : 'Cliente Retira'}
+                </div>
             `;
 
             // Process body
@@ -515,8 +766,8 @@
             return card;
         }
 
-        function showProcessDetails(processId) {
-            const process = processes[processId];
+        function showProcessDetails(processId, isHistory = false) {
+            const process = isHistory ? completedProcesses[processId] : processes[processId];
             if (!process) return;
 
             const stepsOrder = getStepsOrder(process.vehicleType);
@@ -545,7 +796,7 @@
                             </div>
                             <div class="details-item">
                                 <strong>Tempo Total:</strong>
-                                <span>${formatTime((Date.now() - process.startTime) / 1000)}</span>
+                                <span>${formatTime(process.totalDuration ? process.totalDuration / 1000 : (Date.now() - process.startTime) / 1000)}</span>
                             </div>
                         </div>
 
@@ -585,14 +836,14 @@
             `;
 
             stepsOrder.forEach((step, index) => {
-                const stepData = process[step];
+                const stepData = process.steps ? process.steps[step] : process[step];
                 const isCompleted = stepData?.status === 'completed';
                 const isCurrent = process.currentStep === step;
                 const isPending = index > currentStepIndex;
 
                 detailsHtml += `
                     <div class="timeline-item">
-                        <div class="timeline-dot"></div>
+                        <div class="timeline-dot ${isCompleted ? 'completed' : isCurrent ? 'current' : ''}"></div>
                         <div class="timeline-content">
                             <div class="timeline-step">${getStepName(step)}</div>
                             <div class="timeline-info">
@@ -612,11 +863,11 @@
                 // Add wait time if applicable
                 if (index < stepsOrder.length - 1 && isCompleted) {
                     const nextStep = stepsOrder[index + 1];
-                    const nextStepData = process[nextStep];
+                    const nextStepData = process.steps ? process.steps[nextStep] : process[nextStep];
                     if (nextStepData?.waitTime) {
                         detailsHtml += `
                             <div class="timeline-item">
-                                <div class="timeline-dot"></div>
+                                <div class="timeline-dot wait"></div>
                                 <div class="timeline-content">
                                     <div class="timeline-step">Espera</div>
                                     <div class="timeline-info">
