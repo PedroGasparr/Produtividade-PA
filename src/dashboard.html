@@ -545,20 +545,6 @@
 
                 <div id="scanFeedback" class="message"></div>
 
-                <div class="qr-scanner-container">
-                    <video id="qrScanner" width="100%" playsinline></video>
-                    <button class="camera-switch" id="switchCameraBtn" style="display: none;">
-                        <i class="fas fa-sync-alt"></i> Trocar Câmera
-                    </button>
-                    <button class="btn primary-btn" id="startScannerBtn">
-                        <i class="fas fa-qrcode"></i> Ativar Leitor QR Code
-                    </button>
-                </div>
-
-                <div id="operatorInfo" style="display: none; margin: 10px 0;">
-                    Operador: <strong id="operatorName"></strong>
-                </div>
-
                 <div class="form-group">
                     <label for="dtNumber">Número da DT - Nº do Pedido:</label>
                     <input type="text" id="dtNumber" placeholder="Digite o número da DT" required>
@@ -588,7 +574,25 @@
                         <option value="9">Doca 9</option>
                         <option value="10">Doca 10</option>
                         <option value="11">Doca 11</option>
+                        <option value="12">Doca 12</option>
+                        <option value="13">Doca 13</option>
+                        <option value="14">Doca 14</option>
+                        <option value="15">Doca 15</option>
                     </select>
+                </div>
+
+                <div class="qr-scanner-container">
+                    <video id="qrScanner" width="100%" playsinline></video>
+                    <button class="camera-switch" id="switchCameraBtn" style="display: none;">
+                        <i class="fas fa-sync-alt"></i> Trocar Câmera
+                    </button>
+                    <button class="btn primary-btn" id="startScannerBtn">
+                        <i class="fas fa-qrcode"></i> Ativar Leitor QR Code
+                    </button>
+                </div>
+
+                <div id="operatorInfo" style="display: none; margin: 10px 0;">
+                    Operador: <strong id="operatorName"></strong>
                 </div>
 
                 <div class="modal-actions">
@@ -666,12 +670,12 @@
 
         // Mapeamento das etapas
         const STAGES = {
-            1: { name: 'Vistoria', needsHelpers: false, startText: 'Iniciar Vistoria', endText: 'Finalizar Vistoria' },
-            2: { name: 'Abertura', needsHelpers: true, startText: 'Adicionar Ajudantes', endText: 'Confirmar Ajudantes' },
-            3: { name: 'Separação', needsHelpers: false, startText: 'Iniciar Separação', endText: 'Finalizar Separação' },
-            4: { name: 'Faturamento', needsHelpers: false, startText: 'Iniciar Faturamento', endText: 'Finalizar Faturamento' },
-            5: { name: 'Carregamento', needsHelpers: false, startText: 'Iniciar Carregamento', endText: 'Finalizar Carregamento' },
-            6: { name: 'Fechamento', needsHelpers: true, startText: 'Adicionar Ajudantes', endText: 'Finalizar Processo' }
+            1: { name: 'Vistoria', needsHelpers: false, needsOperator: true, startText: 'Iniciar Vistoria', endText: 'Finalizar Vistoria' },
+            2: { name: 'Abertura', needsHelpers: true, needsOperator: false, startText: 'Adicionar Ajudantes', endText: 'Finalizar Abertura' },
+            3: { name: 'Separação', needsHelpers: false, needsOperator: true, startText: 'Iniciar Separação', endText: 'Finalizar Separação' },
+            4: { name: 'Faturamento', needsHelpers: false, needsOperator: true, startText: 'Iniciar Faturamento', endText: 'Finalizar Faturamento' },
+            5: { name: 'Carregamento', needsHelpers: false, needsOperator: true, startText: 'Iniciar Carregamento', endText: 'Finalizar Carregamento' },
+            6: { name: 'Fechamento', needsHelpers: true, needsOperator: false, startText: 'Adicionar Ajudantes', endText: 'Finalizar Processo' }
         };
 
         // Variáveis globais
@@ -1134,67 +1138,43 @@
         }
 
         function handleQrScan(content, type) {
-            const qrCodeRegex = /^GZL-EO-\d{5}$/;
-            if (!qrCodeRegex.test(content)) {
-                showFeedback('QR Code inválido! Formato deve ser GZL-EO-XXXXX', 'error', 
-                            type === 'start' ? 'scanFeedback' : 'processStepFeedback');
-                return;
+            // Simplesmente pega o conteúdo do QR Code e armazena
+            // Não valida no banco de dados, apenas usa o conteúdo lido
+            const employeeName = content; // Aqui você poderia extrair nome e código se o QR Code tiver um formato específico
+            
+            if (type === 'start') {
+                elements.operatorName.textContent = employeeName;
+                elements.operatorInfo.style.display = 'block';
+                elements.confirmProcessBtn.disabled = false;
+                showFeedback('Operador registrado com sucesso!', 'success', 'scanFeedback');
+                stopScanner();
+            } else {
+                if (STAGES[currentStepModalStage].needsHelpers && isStartingStep) {
+                    addHelperToList(employeeName);
+                } else {
+                    elements.stepOperatorName.textContent = employeeName;
+                    elements.stepOperatorInfo.style.display = 'block';
+                    elements.confirmStepBtn.disabled = false;
+                    showFeedback('Operador registrado com sucesso!', 'success', 'processStepFeedback');
+                    stopStepScanner();
+                }
             }
-
-            showFeedback('Validando QR Code...', 'info', 
-                        type === 'start' ? 'scanFeedback' : 'processStepFeedback');
-
-            db.ref('funcionarios').orderByChild('codigo').equalTo(content).once('value')
-                .then(snapshot => {
-                    if (!snapshot.exists()) {
-                        throw new Error('Funcionário não encontrado');
-                    }
-
-                    let employeeData = null;
-                    snapshot.forEach(child => {
-                        employeeData = child.val();
-                        return true;
-                    });
-
-                    if (type === 'start') {
-                        elements.operatorName.textContent = employeeData.nome;
-                        elements.operatorInfo.style.display = 'block';
-                        elements.confirmProcessBtn.disabled = false;
-                        showFeedback('Operador validado com sucesso!', 'success', 'scanFeedback');
-                        stopScanner();
-                    } else {
-                        if (STAGES[currentStepModalStage].needsHelpers && isStartingStep) {
-                            addHelperToList(employeeData);
-                        } else {
-                            elements.stepOperatorName.textContent = employeeData.nome;
-                            elements.stepOperatorInfo.style.display = 'block';
-                            elements.confirmStepBtn.disabled = false;
-                            showFeedback('Operador validado com sucesso!', 'success', 'processStepFeedback');
-                            stopStepScanner();
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro ao validar QR Code:', error);
-                    showFeedback('Erro: ' + error.message, 'error', 
-                                type === 'start' ? 'scanFeedback' : 'processStepFeedback');
-                });
         }
 
-        function addHelperToList(employeeData) {
+        function addHelperToList(employeeName) {
             const existingHelper = Array.from(elements.helpersList.children).find(item => 
-                item.textContent.includes(employeeData.nome)
+                item.textContent.includes(employeeName)
             );
             
             if (existingHelper) {
-                showFeedback(`${employeeData.nome} já está na lista`, 'info', 'processStepFeedback');
+                showFeedback(`${employeeName} já está na lista`, 'info', 'processStepFeedback');
                 return;
             }
 
             const helperItem = document.createElement('div');
             helperItem.className = 'helper-item';
             helperItem.innerHTML = `
-                <span>${employeeData.nome} (${employeeData.cargo || 'Ajudante'})</span>
+                <span>${employeeName}</span>
                 <button class="remove-helper-btn"><i class="fas fa-times"></i></button>
             `;
             
@@ -1205,7 +1185,7 @@
             
             elements.helpersList.appendChild(helperItem);
             checkHelpersList();
-            showFeedback(`${employeeData.nome} adicionado como ajudante`, 'success', 'processStepFeedback');
+            showFeedback(`${employeeName} adicionado como ajudante`, 'success', 'processStepFeedback');
         }
 
         function checkHelpersList() {
