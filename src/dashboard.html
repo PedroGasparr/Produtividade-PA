@@ -429,8 +429,8 @@
                         <label for="vehicleType">Tipo de Veículo:</label>
                         <select id="vehicleType" required>
                             <option value="">Selecione...</option>
-                            <option value="rodoviario">Rodoviário</option>
-                            <option value="maritimo">Marítimo</option>
+                            <option value="carregamento">Carregamento</option>
+                            <option value="cliente_retira">Cliente Retira</option>
                         </select>
                     </div>
 
@@ -1162,9 +1162,12 @@
         }
 
         function getStepsOrder(vehicleType) {
-            return vehicleType === 'cliente_retira' 
-                ? ['vistoria', 'separacao'] 
-                : ['vistoria', 'abertura', 'separacao', 'faturamento', 'carregamento', 'fechamento'];
+            if (vehicleType === 'cliente_retira') {
+                return ['vistoria', 'separacao'];
+            } else if (vehicleType === 'carregamento') {
+                return ['vistoria', 'abertura', 'separacao', 'faturamento', 'carregamento', 'fechamento'];
+            }
+            return [];
         }
 
         function showFeedback(message, type, elementId) {
