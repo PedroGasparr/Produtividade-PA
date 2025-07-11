@@ -993,7 +993,7 @@
             
             if (!operatorName || !processes[processId]) {
                 showFeedback(operatorName ? 'Processo não encontrado' : 'Escaneie o QR Code do operador', 
-                           'error', 'qrCodeFeedback');
+                        'error', 'qrCodeFeedback');
                 return;
             }
             
@@ -1029,13 +1029,15 @@
                     updates[`${step}/duration`] = (Date.now() - process[step].startTime) / 1000;
                 }
                 
+                // Apenas marcar como completo quando for a última etapa
                 const currentIndex = stepsOrder.indexOf(step);
                 const nextStep = stepsOrder[currentIndex + 1];
                 
-                if (nextStep && !isFinalStep) {
+                if (nextStep) {
                     updates[`${nextStep}/status`] = 'pending';
                     updates.currentStep = nextStep;
                 } else {
+                    // Última etapa concluída
                     updates.status = 'completed';
                     updates.endTime = now;
                 }
@@ -1046,7 +1048,7 @@
                     showFeedback('Operação confirmada com sucesso!', 'success', 'qrCodeFeedback');
                     setTimeout(() => {
                         elements.qrCodeModal.style.display = 'none';
-                        if (action === 'complete' && (!updates.currentStep || isFinalStep)) {
+                        if (action === 'complete' && !updates.currentStep) {
                             saveProcessToHistory(processId);
                         }
                     }, 1500);
@@ -1056,6 +1058,15 @@
                     showFeedback('Erro: ' + error.message, 'error', 'qrCodeFeedback');
                     elements.confirmQrCodeBtn.disabled = false;
                 });
+        }
+
+        function getStepsOrder(vehicleType) {
+            if (vehicleType === 'cliente_retira') {
+                return ['vistoria', 'separacao'];
+            } else if (vehicleType === 'carregamento') {
+                return ['vistoria', 'abertura', 'separacao', 'faturamento', 'carregamento', 'fechamento'];
+            }
+            return [];
         }
 
         function confirmAssistants() {
