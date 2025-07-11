@@ -587,7 +587,7 @@
                         <i class="fas fa-sync-alt"></i> Trocar Câmera
                     </button>
                     <button class="btn primary-btn" id="startScannerBtn">
-                        <i class="fas fa-qrcode"></i> Ativar Leitor QR Code
+                        <i class="fas fa-qrcode"></i> Ler QR Code do Operador
                     </button>
                 </div>
 
@@ -622,7 +622,7 @@
                         <i class="fas fa-sync-alt"></i> Trocar Câmera
                     </button>
                     <button class="btn primary-btn" id="startStepScannerBtn">
-                        <i class="fas fa-qrcode"></i> Ativar Leitor QR Code
+                        <i class="fas fa-qrcode"></i> <span id="scanActionText">Ler QR Code</span>
                     </button>
                 </div>
 
@@ -670,12 +670,12 @@
 
         // Mapeamento das etapas
         const STAGES = {
-            1: { name: 'Vistoria', needsHelpers: false, needsOperator: true, startText: 'Iniciar Vistoria', endText: 'Finalizar Vistoria' },
-            2: { name: 'Abertura', needsHelpers: true, needsOperator: false, startText: 'Adicionar Ajudantes', endText: 'Finalizar Abertura' },
-            3: { name: 'Separação', needsHelpers: false, needsOperator: true, startText: 'Iniciar Separação', endText: 'Finalizar Separação' },
-            4: { name: 'Faturamento', needsHelpers: false, needsOperator: true, startText: 'Iniciar Faturamento', endText: 'Finalizar Faturamento' },
-            5: { name: 'Carregamento', needsHelpers: false, needsOperator: true, startText: 'Iniciar Carregamento', endText: 'Finalizar Carregamento' },
-            6: { name: 'Fechamento', needsHelpers: true, needsOperator: false, startText: 'Adicionar Ajudantes', endText: 'Finalizar Processo' }
+            1: { name: 'Vistoria', needsHelpers: false, needsOperator: true },
+            2: { name: 'Abertura', needsHelpers: true, needsOperator: false },
+            3: { name: 'Separação', needsHelpers: false, needsOperator: true },
+            4: { name: 'Faturamento', needsHelpers: false, needsOperator: true },
+            5: { name: 'Carregamento', needsHelpers: false, needsOperator: true },
+            6: { name: 'Fechamento', needsHelpers: true, needsOperator: false }
         };
 
         // Variáveis globais
@@ -689,6 +689,7 @@
         let currentCameraIndex = 0;
         let currentStepCameraIndex = 0;
         let isStartingStep = true;
+        let currentStepStarted = false;
 
         // Elementos da página
         const elements = {
@@ -721,6 +722,7 @@
             processDockNumber: document.getElementById('processDockNumber'),
             stepQrScanner: document.getElementById('stepQrScanner'),
             startStepScannerBtn: document.getElementById('startStepScannerBtn'),
+            scanActionText: document.getElementById('scanActionText'),
             switchStepCameraBtn: document.getElementById('switchStepCameraBtn'),
             stepOperatorName: document.getElementById('stepOperatorName'),
             stepOperatorInfo: document.getElementById('stepOperatorInfo'),
@@ -844,20 +846,22 @@
                     stageContent += `<div class="stage-time-info">
                         <div>Tempo: ${duration}</div>
                     </div>`;
-                } else if (isActive && isStarted) {
-                    // Etapa ativa e iniciada - mostrar botão de finalizar
-                    stageContent += `<div class="step-actions">
-                        <button class="btn danger-btn end-stage-btn" data-stage="${stageId}">
-                            ${stageData.endText}
-                        </button>
-                    </div>`;
                 } else if (isActive) {
-                    // Etapa ativa mas não iniciada - mostrar botão de iniciar
-                    stageContent += `<div class="step-actions">
-                        <button class="btn primary-btn start-stage-btn" data-stage="${stageId}">
-                            ${stageData.startText}
-                        </button>
-                    </div>`;
+                    if (isStarted) {
+                        // Etapa iniciada - mostrar botão de finalizar
+                        stageContent += `<div class="step-actions">
+                            <button class="btn danger-btn end-stage-btn" data-stage="${stageId}">
+                                Finalizar ${stageData.name}
+                            </button>
+                        </div>`;
+                    } else {
+                        // Etapa não iniciada - mostrar botão de iniciar
+                        stageContent += `<div class="step-actions">
+                            <button class="btn primary-btn start-stage-btn" data-stage="${stageId}">
+                                Iniciar ${stageData.name}
+                            </button>
+                        </div>`;
+                    }
                 }
                 
                 stageContent += `</div>`;
@@ -1004,6 +1008,17 @@
             document.body.style.overflow = 'auto';
         }
 
+        function findRearCamera(cameras) {
+            // Prioriza câmera traseira
+            const rearCameraIndex = cameras.findIndex(cam => 
+                cam.name.toLowerCase().includes('rear') || 
+                cam.name.toLowerCase().includes('traseira') || 
+                (cam.facing && cam.facing === 'environment')
+            );
+            
+            return rearCameraIndex >= 0 ? cameras[rearCameraIndex] : cameras[0];
+        }
+
         function startScanner() {
             stopScanner();
             
@@ -1026,16 +1041,12 @@
                         throw new Error('Nenhuma câmera encontrada. Verifique as permissões.');
                     }
                     
-                    // Prioriza câmera traseira
-                    const rearCameraIndex = cameraList.findIndex(cam => 
-                        cam.name.toLowerCase().includes('rear') || 
-                        cam.name.toLowerCase().includes('traseira') || 
-                        cam.facing === 'environment'
-                    );
+                    // Usa a câmera traseira se disponível
+                    const rearCamera = findRearCamera(cameras);
+                    currentCameraIndex = cameras.indexOf(rearCamera);
                     
-                    currentCameraIndex = rearCameraIndex >= 0 ? rearCameraIndex : 0;
                     elements.switchCameraBtn.style.display = cameras.length > 1 ? 'block' : 'none';
-                    return qrScanner.start(cameras[currentCameraIndex]);
+                    return qrScanner.start(rearCamera);
                 })
                 .then(() => {
                     showFeedback('Scanner iniciado com sucesso', 'success', 'scanFeedback');
@@ -1085,16 +1096,12 @@
                         throw new Error('Nenhuma câmera encontrada');
                     }
                     
-                    // Prioriza câmera traseira
-                    const rearCameraIndex = cameraList.findIndex(cam => 
-                        cam.name.toLowerCase().includes('rear') || 
-                        cam.name.toLowerCase().includes('traseira') || 
-                        cam.facing === 'environment'
-                    );
+                    // Usa a câmera traseira se disponível
+                    const rearCamera = findRearCamera(cameraList);
+                    currentStepCameraIndex = cameraList.indexOf(rearCamera);
                     
-                    currentStepCameraIndex = rearCameraIndex >= 0 ? rearCameraIndex : 0;
                     elements.switchStepCameraBtn.style.display = cameraList.length > 1 ? 'block' : 'none';
-                    return stepQrScanner.start(cameraList[currentStepCameraIndex]);
+                    return stepQrScanner.start(rearCamera);
                 })
                 .then(() => {
                     showFeedback('Scanner iniciado com sucesso', 'success', 'processStepFeedback');
@@ -1139,8 +1146,7 @@
 
         function handleQrScan(content, type) {
             // Simplesmente pega o conteúdo do QR Code e armazena
-            // Não valida no banco de dados, apenas usa o conteúdo lido
-            const employeeName = content; // Aqui você poderia extrair nome e código se o QR Code tiver um formato específico
+            const employeeName = content;
             
             if (type === 'start') {
                 elements.operatorName.textContent = employeeName;
@@ -1255,7 +1261,8 @@
             
             if (isStartingStep) {
                 elements.processStepTitle.textContent = `Iniciar ${STAGES[stage].name}`;
-                elements.confirmStepBtn.textContent = STAGES[stage].startText;
+                elements.confirmStepBtn.textContent = `Iniciar ${STAGES[stage].name}`;
+                elements.scanActionText.textContent = STAGES[stage].needsHelpers ? 'Adicionar Ajudante' : 'Ler QR Code do Operador';
                 
                 if (STAGES[stage].needsHelpers) {
                     elements.helpersList.style.display = 'block';
@@ -1264,7 +1271,8 @@
                 }
             } else {
                 elements.processStepTitle.textContent = `Finalizar ${STAGES[stage].name}`;
-                elements.confirmStepBtn.textContent = STAGES[stage].endText;
+                elements.confirmStepBtn.textContent = `Finalizar ${STAGES[stage].name}`;
+                elements.scanActionText.textContent = STAGES[stage].needsHelpers ? 'Confirmar Ajudante' : 'Ler QR Code do Operador';
                 elements.helpersList.style.display = 'none';
             }
             
@@ -1457,6 +1465,7 @@
             elements.helpersList.style.display = 'none';
             elements.confirmStepBtn.disabled = true;
             elements.processStepFeedback.style.display = 'none';
+            currentStepStarted = false;
         }
 
         function showFeedback(message, type, elementId) {
