@@ -7,6 +7,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../css/dahboard.css">
+    <style>
+        .pause-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .pause-time {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .btn.warning-btn {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .btn.success-btn {
+            background-color: #28a745;
+            color: white;
+        }
+    </style>
 </head>
 <body>
     <div class="dashboard-container">
@@ -186,6 +206,7 @@
         let currentScanner = null;
         let processes = {};
         let timers = {};
+        let pauseTimers = {};
         let currentAssistants = [];
 
         // Elementos da página
@@ -297,8 +318,21 @@
                                 id: processSnapshot.key
                             };
                             
-                            if (!timers[processSnapshot.key] && processData.status === 'in_progress') {
-                                startProcessTimer(processSnapshot.key, processData.startTime || Date.now());
+                            if (processData.status === 'in_progress' && !timers[processSnapshot.key]) {
+                                const pauseTime = processData.totalPauseTime || 0;
+                                startProcessTimer(processSnapshot.key, processData.startTime || Date.now(), pauseTime);
+                            } else if (processData.status === 'paused' && !pauseTimers[processSnapshot.key]) {
+                                // Recriar timer de pausa se a página for recarregada
+                                const pauseTimerElement = document.getElementById(`pause-timer-${processSnapshot.key}`);
+                                if (pauseTimerElement) {
+                                    pauseTimerElement.style.display = 'block';
+                                    
+                                    const totalPauseTime = processData.totalPauseTime || 0;
+                                    const currentPauseTime = processData.pauseStartTime ? 
+                                        Math.floor((Date.now() - processData.pauseStartTime) / 1000) : 0;
+                                    
+                                    pauseTimerElement.textContent = formatTime(totalPauseTime + currentPauseTime);
+                                }
                             }
                         }
                     });
@@ -355,6 +389,12 @@
             timer.className = 'timer-display';
             timer.innerHTML = `Tempo: <span id="timer-${process.id}">00:00:00</span>`;
             
+            // Adicionar display de tempo de pausa
+            const pauseTimeDisplay = document.createElement('div');
+            pauseTimeDisplay.className = 'pause-time';
+            pauseTimeDisplay.innerHTML = `Pausa: <span id="pause-timer-${process.id}">00:00:00</span>`;
+            pauseTimeDisplay.style.display = process.status === 'paused' ? 'block' : 'none';
+            
             const currentStep = document.createElement('div');
             currentStep.className = 'step-title';
             currentStep.textContent = process.currentStep ? 
@@ -367,6 +407,15 @@
                 addStepButtons(actions, process);
             }
             
+            // Adicionar botão de pausar/continuar
+            const pauseBtn = document.createElement('button');
+            pauseBtn.className = process.status === 'paused' ? 'btn success-btn' : 'btn warning-btn';
+            pauseBtn.innerHTML = process.status === 'paused' ? 
+                '<i class="fas fa-play"></i> Continuar' : 
+                '<i class="fas fa-pause"></i> Pausar';
+            pauseBtn.addEventListener('click', () => togglePauseProcess(process.id));
+            actions.appendChild(pauseBtn);
+            
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'btn danger-btn';
             cancelBtn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
@@ -376,6 +425,7 @@
             body.appendChild(vehicleInfo);
             body.appendChild(dockInfo);
             body.appendChild(timer);
+            body.appendChild(pauseTimeDisplay);
             body.appendChild(currentStep);
             body.appendChild(actions);
             
@@ -383,6 +433,89 @@
             card.appendChild(body);
             
             return card;
+        }
+
+        function togglePauseProcess(processId) {
+            const process = processes[processId];
+            if (!process) return;
+
+            const processRef = db.ref(`processos/${processId}`);
+            const now = Date.now();
+            const updates = {};
+
+            if (process.status === 'paused') {
+                // Continuar o processo
+                updates.status = 'in_progress';
+                updates.resumeTime = now;
+                
+                if (process.pauseStartTime) {
+                    const pauseDuration = (now - process.pauseStartTime) / 1000;
+                    updates.totalPauseTime = (process.totalPauseTime || 0) + pauseDuration;
+                }
+                
+                processRef.update(updates)
+                    .then(() => {
+                        startProcessTimer(processId, process.startTime, updates.totalPauseTime || process.totalPauseTime || 0);
+                        if (pauseTimers[processId]) {
+                            clearInterval(pauseTimers[processId]);
+                            delete pauseTimers[processId];
+                        }
+                        
+                        // Esconder o timer de pausa
+                        const pauseTimerElement = document.getElementById(`pause-timer-${processId}`);
+                        if (pauseTimerElement) {
+                            pauseTimerElement.style.display = 'none';
+                        }
+                    });
+            } else {
+                // Pausar o processo
+                updates.status = 'paused';
+                updates.pauseStartTime = now;
+                
+                processRef.update(updates)
+                    .then(() => {
+                        if (timers[processId]) {
+                            clearInterval(timers[processId]);
+                            delete timers[processId];
+                        }
+                        
+                        // Mostrar o timer de pausa
+                        const pauseTimerElement = document.getElementById(`pause-timer-${processId}`);
+                        if (pauseTimerElement) {
+                            pauseTimerElement.style.display = 'block';
+                            
+                            const totalPauseTime = process.totalPauseTime || 0;
+                            let currentPauseSeconds = 0;
+                            
+                            pauseTimers[processId] = setInterval(() => {
+                                currentPauseSeconds++;
+                                pauseTimerElement.textContent = formatTime(totalPauseTime + currentPauseSeconds);
+                            }, 1000);
+                        }
+                    });
+            }
+        }
+
+        function startProcessTimer(processId, startTime, initialPauseTime = 0) {
+            if (timers[processId]) clearInterval(timers[processId]);
+            
+            const timerElement = document.getElementById(`timer-${processId}`);
+            const pauseTimerElement = document.getElementById(`pause-timer-${processId}`);
+            
+            if (pauseTimerElement) {
+                pauseTimerElement.style.display = 'none';
+                pauseTimerElement.textContent = formatTime(initialPauseTime);
+            }
+            
+            const updateTimer = () => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000) - initialPauseTime;
+                if (timerElement) {
+                    timerElement.textContent = formatTime(elapsed);
+                }
+            };
+            
+            updateTimer();
+            timers[processId] = setInterval(updateTimer, 1000);
         }
 
         function addStepButtons(container, process) {
@@ -453,21 +586,6 @@
             message.className = 'feedback info';
             message.textContent = 'Nenhum processo ativo encontrado. Clique em "Novo Processo" para começar.';
             elements.processCardsContainer.appendChild(message);
-        }
-
-        function startProcessTimer(processId, startTime) {
-            if (timers[processId]) clearInterval(timers[processId]);
-            
-            const updateTimer = () => {
-                const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                const timerElement = document.getElementById(`timer-${processId}`);
-                if (timerElement) {
-                    timerElement.textContent = formatTime(elapsed);
-                }
-            };
-            
-            updateTimer();
-            timers[processId] = setInterval(updateTimer, 1000);
         }
 
         function showQrCodeModal(title, action, processId, step, isFinalStep = false) {
@@ -613,7 +731,8 @@
                         status: 'pending',
                         createdBy: currentUser.uid,
                         createdAt: firebase.database.ServerValue.TIMESTAMP,
-                        currentStep: null
+                        currentStep: null,
+                        totalPauseTime: 0
                     };
 
                     getStepsOrder(vehicleType).forEach(step => {
@@ -666,7 +785,9 @@
                 updates.currentStep = step;
                 updates.status = 'in_progress';
                 
-                if (!process.startTime) updates.startTime = now;
+                if (!process.startTime) {
+                    updates.startTime = now;
+                }
                 
                 const currentIndex = stepsOrder.indexOf(step);
                 if (currentIndex > 0) {
@@ -780,8 +901,9 @@
                 startTime: process.startTime,
                 endTime: process.endTime || firebase.database.ServerValue.TIMESTAMP,
                 createdBy: process.createdBy,
+                totalPauseTime: process.totalPauseTime || 0,
                 steps: {},
-                totalDuration: (process.endTime || Date.now()) - process.startTime
+                totalDuration: (process.endTime || Date.now()) - process.startTime - ((process.totalPauseTime || 0) * 1000)
             };
             
             getStepsOrder(process.vehicleType).forEach(step => {
@@ -813,10 +935,6 @@
             }
         }
 
-        function viewProcessDetails(processId) {
-            alert(`Visualizar detalhes do processo ${processId}`);
-        }
-
         // Funções auxiliares
         function getStepName(stepId) {
             const stepNames = {
@@ -838,6 +956,16 @@
             return labels[type] || type;
         }
 
+        function getStatusLabel(status) {
+            const labels = {
+                'pending': 'Pendente',
+                'in_progress': 'Em Andamento',
+                'paused': 'Pausado',
+                'completed': 'Concluído'
+            };
+            return labels[status] || status;
+        }
+
         function showFeedback(message, type, elementId) {
             const feedbackElement = document.getElementById(elementId);
             if (!feedbackElement) return;
@@ -856,15 +984,6 @@
             const mins = Math.floor((seconds % 3600) / 60);
             const secs = seconds % 60;
             return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
-
-        function getStatusLabel(status) {
-            const labels = {
-                'pending': 'Pendente',
-                'in_progress': 'Em Andamento',
-                'completed': 'Concluído'
-            };
-            return labels[status] || status;
         }
     </script>
 </body>

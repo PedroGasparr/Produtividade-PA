@@ -11,24 +11,24 @@
 <body>
     <div class="dashboard-container">
         <!-- Sidebar -->
-         <button class="hamburger-btn" id="hamburgerBtn">
-                <i class="fas fa-bars"></i>
-            </button>
+        <button class="hamburger-btn" id="hamburgerBtn">
+            <i class="fas fa-bars"></i>
+        </button>
         <nav class="sidebar">
             <div class="sidebar-header">
                 <img src="../img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo PA" class="sidebar-logo">
                 <h2>Sistema PA</h2>
             </div>
             <ul class="sidebar-menu">
-                        <li class="active"><a href="dashboard.html"><i class="fas fa-home"></i> Início</a></li>
-                        <li><a href="dash.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                        <li><a href="cadastro_colaborador.html"><i class="fas fa-users"></i> Cadastrar Funcionários</a></li>
-                        <li><a href="buscar_funcionarios.html"><i class="fas fa-search"></i> Buscar Funcionários</a></li>
-                        <li><a href="painel_de_controle.html"><i class="fa fa-tasks"></i> Painel De Controle</a></li>
-                        <li><a href="historico.html"><i class="fas fa-history"></i> Histórico</a></li>
-                        <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
-                    </ul>
-                </nav>
+                <li class="active"><a href="dashboard.html"><i class="fas fa-home"></i> Início</a></li>
+                <li><a href="dash.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="cadastro_colaborador.html"><i class="fas fa-users"></i> Cadastrar Funcionários</a></li>
+                <li><a href="buscar_funcionarios.html"><i class="fas fa-search"></i> Buscar Funcionários</a></li>
+                <li><a href="painel_de_controle.html"><i class="fa fa-tasks"></i> Painel De Controle</a></li>
+                <li><a href="historico.html"><i class="fas fa-history"></i> Histórico</a></li>
+                <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+            </ul>
+        </nav>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -65,11 +65,12 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="vehicleType">Tipo de Veículo:</label>
+                        <label for="vehicleType">Tipo de Processo:</label>
                         <select id="vehicleType" required>
                             <option value="">Selecione...</option>
                             <option value="carregamento">Carregamento</option>
                             <option value="cliente_retira">Cliente Retira</option>
+                            <option value="separacao">Separação</option>
                         </select>
                     </div>
 
@@ -165,13 +166,13 @@
     <!-- QR Code Scanner -->
     <script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
     
-   <script>
+    <script>
         // Configuração do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAROtfqwCp2i2DVqqQDge6QueiNbmlPzuI",
             authDomain: "produtividade-pa.firebaseapp.com",
             projectId: "produtividade-pa",
-            storageBucket: "produtividade-pa.firebasestorage.app",
+            storageBucket: "produtividade-pa.appspot.com",
             messagingSenderId: "455228218660",
             appId: "1:455228218660:web:f48ae8a0a03ea1062ca7b1",
             measurementId: "G-3ER0DB83JV"
@@ -344,7 +345,7 @@
             
             const vehicleInfo = document.createElement('div');
             vehicleInfo.className = 'process-card-info';
-            vehicleInfo.textContent = `Tipo: ${process.vehicleType === 'cliente_retira' ? 'Cliente Retira' : 'Carregamento'}`;
+            vehicleInfo.textContent = `Tipo: ${getProcessTypeLabel(process.vehicleType)}`;
             
             const dockInfo = document.createElement('div');
             dockInfo.className = 'process-card-info';
@@ -389,16 +390,28 @@
             const currentStepIndex = process.currentStep ? stepsOrder.indexOf(process.currentStep) : -1;
             
             if (currentStepIndex === -1) {
+                // Processo não iniciado
                 const startBtn = document.createElement('button');
                 startBtn.className = 'btn primary-btn';
-                startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Vistoria';
-                startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Vistoria', 'start', process.id, 'vistoria'));
+                
+                if (process.vehicleType === 'separacao') {
+                    startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Separação';
+                    startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Separação', 'start', process.id, 'separacao'));
+                } else if (process.vehicleType === 'cliente_retira') {
+                    startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Separação';
+                    startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Separação', 'start', process.id, 'separacao'));
+                } else {
+                    startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Vistoria';
+                    startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Vistoria', 'start', process.id, 'vistoria'));
+                }
+                
                 container.appendChild(startBtn);
             } else {
                 const currentStep = stepsOrder[currentStepIndex];
                 const stepData = process[currentStep];
                 
                 if (stepData && stepData.status === 'in_progress') {
+                    // Etapa em andamento
                     const endBtn = document.createElement('button');
                     endBtn.className = 'btn primary-btn';
                     endBtn.innerHTML = '<i class="fas fa-stop"></i> Finalizar Etapa';
@@ -419,6 +432,7 @@
                         container.appendChild(addBtn);
                     }
                 } else {
+                    // Próxima etapa pendente
                     const startBtn = document.createElement('button');
                     startBtn.className = 'btn primary-btn';
                     startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Etapa';
@@ -701,12 +715,16 @@
         }
 
         function getStepsOrder(vehicleType) {
-            if (vehicleType === 'cliente_retira') {
-                return ['vistoria', 'separacao'];
-            } else if (vehicleType === 'carregamento') {
-                return ['vistoria', 'abertura', 'separacao', 'faturamento', 'carregamento', 'fechamento'];
+            switch(vehicleType) {
+                case 'carregamento':
+                    return ['vistoria', 'abertura', 'separacao', 'carregamento', 'fechamento'];
+                case 'cliente_retira':
+                    return ['separacao'];
+                case 'separacao':
+                    return ['separacao'];
+                default:
+                    return [];
             }
-            return [];
         }
 
         function confirmAssistants() {
@@ -805,20 +823,19 @@
                 'vistoria': 'Vistoria',
                 'abertura': 'Abertura do Caminhão',
                 'separacao': 'Separação',
-                'faturamento': 'Faturamento',
                 'carregamento': 'Carregamento',
                 'fechamento': 'Fechamento do Caminhão'
             };
             return stepNames[stepId] || stepId;
         }
 
-        function getStepsOrder(vehicleType) {
-            if (vehicleType === 'cliente_retira') {
-                return ['vistoria', 'separacao'];
-            } else if (vehicleType === 'carregamento') {
-                return ['vistoria', 'abertura', 'separacao', 'faturamento', 'carregamento', 'fechamento'];
-            }
-            return [];
+        function getProcessTypeLabel(type) {
+            const labels = {
+                'carregamento': 'Carregamento',
+                'cliente_retira': 'Cliente Retira',
+                'separacao': 'Separação'
+            };
+            return labels[type] || type;
         }
 
         function showFeedback(message, type, elementId) {
