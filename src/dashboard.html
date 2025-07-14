@@ -511,8 +511,20 @@
 
         function addStepButtons(container, process) {
             const stepsOrder = getStepsOrder(process.vehicleType);
-            const currentStepIndex = process.currentStep ? stepsOrder.indexOf(process.currentStep) : -1;
+            let currentStepIndex = process.currentStep ? stepsOrder.indexOf(process.currentStep) : -1;
             
+            // Se for carregamento e separação já estiver concluída, ajusta o currentStepIndex
+            if (process.vehicleType === 'carregamento' && process.separacao?.status === 'completed') {
+                // Remove a etapa de separação da ordem
+                const filteredSteps = stepsOrder.filter(step => step !== 'separacao');
+                currentStepIndex = process.currentStep ? filteredSteps.indexOf(process.currentStep) : -1;
+                
+                // Se o currentStep era separação, vai para vistoria
+                if (currentStepIndex === -1 && process.currentStep === 'separacao') {
+                    currentStepIndex = filteredSteps.indexOf('vistoria');
+                }
+            }
+
             if (currentStepIndex === -1) {
                 // Processo não iniciado
                 const startBtn = document.createElement('button');
@@ -525,14 +537,35 @@
                     startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Separação';
                     startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Separação', 'start', process.id, 'separacao'));
                 } else {
-                    startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Vistoria';
-                    startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Vistoria', 'start', process.id, 'vistoria'));
+                    // Se for carregamento com separação já concluída, começa na vistoria
+                    if (process.vehicleType === 'carregamento' && process.separacao?.status === 'completed') {
+                        startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Vistoria';
+                        startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Vistoria', 'start', process.id, 'vistoria'));
+                    } else {
+                        startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Vistoria';
+                        startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Vistoria', 'start', process.id, 'vistoria'));
+                    }
                 }
                 
                 container.appendChild(startBtn);
             } else {
                 const currentStep = stepsOrder[currentStepIndex];
                 const stepData = process[currentStep];
+                
+                // Se for carregamento com separação concluída, pula a etapa de separação
+                if (process.vehicleType === 'carregamento' && process.separacao?.status === 'completed' && currentStep === 'separacao') {
+                    // Avança para a próxima etapa
+                    const nextStepIndex = currentStepIndex + 1;
+                    if (nextStepIndex < stepsOrder.length) {
+                        const nextStep = stepsOrder[nextStepIndex];
+                        const nextStepBtn = document.createElement('button');
+                        nextStepBtn.className = 'btn primary-btn';
+                        nextStepBtn.innerHTML = `<i class="fas fa-play"></i> Iniciar ${getStepName(nextStep)}`;
+                        nextStepBtn.addEventListener('click', () => showQrCodeModal(`Iniciar ${getStepName(nextStep)}`, 'start', process.id, nextStep));
+                        container.appendChild(nextStepBtn);
+                    }
+                    return;
+                }
                 
                 if (stepData && stepData.status === 'in_progress') {
                     // Etapa em andamento
@@ -711,68 +744,62 @@
                 return;
             }
 
-            // Primeiro verifica se já existe um processo com esta DT
+            // Verifica se já existe uma separação concluída com esta DT
             db.ref('processos').orderByChild('dtNumber').equalTo(dtNumber).once('value')
                 .then(snapshot => {
-                    let existingSeparationProcess = null;
+                    let existingSeparation = null;
                     
-                    // Verifica se existe um processo de separação com esta DT
                     if (snapshot.exists()) {
                         snapshot.forEach(processSnapshot => {
                             const processData = processSnapshot.val();
                             if (processData.vehicleType === 'separacao' && processData.status === 'completed') {
-                                existingSeparationProcess = processData;
+                                existingSeparation = processData;
                             }
                         });
                     }
 
-                    // Se for um carregamento e existir uma separação com a mesma DT, usa os dados da separação
-                    if (vehicleType === 'carregamento' && existingSeparationProcess) {
-                        // Verifica se a separação tem tempo registrado
-                        if (existingSeparationProcess.separacao && existingSeparationProcess.separacao.duration) {
-                            const separationTime = existingSeparationProcess.separacao.duration;
-                            
-                            const newProcess = {
-                                dtNumber,
-                                vehicleType,
-                                dockNumber,
-                                status: 'pending',
-                                createdBy: currentUser.uid,
-                                createdAt: firebase.database.ServerValue.TIMESTAMP,
-                                currentStep: null,
-                                totalPauseTime: 0,
-                                // Copia o tempo de separação do processo existente
-                                separacao: {
-                                    status: 'completed',
-                                    duration: separationTime,
-                                    // Copia outros dados relevantes se necessário
-                                    ...(existingSeparationProcess.separacao.operator && { operator: existingSeparationProcess.separacao.operator }),
-                                    ...(existingSeparationProcess.separacao.assistants && { assistants: existingSeparationProcess.separacao.assistants })
-                                }
-                            };
+                    // Se for carregamento e existir separação concluída com a mesma DT
+                    if (vehicleType === 'carregamento' && existingSeparation) {
+                        // Cria o processo de carregamento com separação já concluída
+                        const newProcess = {
+                            dtNumber,
+                            vehicleType,
+                            dockNumber,
+                            status: 'pending',
+                            createdBy: currentUser.uid,
+                            createdAt: firebase.database.ServerValue.TIMESTAMP,
+                            currentStep: 'vistoria', // Começa na vistoria (pula separação)
+                            totalPauseTime: 0,
+                            // Copia os dados da separação existente
+                            separacao: {
+                                status: 'completed',
+                                startTime: existingSeparation.separacao.startTime,
+                                endTime: existingSeparation.separacao.endTime,
+                                duration: existingSeparation.separacao.duration,
+                                operator: existingSeparation.separacao.operator,
+                                assistants: existingSeparation.separacao.assistants
+                            },
+                            // Inicia as outras etapas como pendentes
+                            vistoria: { status: 'pending' },
+                            abertura: { status: 'pending' },
+                            carregamento: { status: 'pending' },
+                            fechamento: { status: 'pending' }
+                        };
 
-                            // Adiciona as outras etapas do carregamento
-                            getStepsOrder(vehicleType).forEach(step => {
-                                if (step !== 'separacao' && !newProcess[step]) {
-                                    newProcess[step] = { status: 'pending' };
-                                }
+                        const processRef = db.ref('processos').push();
+                        return processRef.set(newProcess)
+                            .then(() => {
+                                showFeedback('Processo criado com sucesso! Separação já concluída.', 'success', 'startProcessFeedback');
+                                setTimeout(() => {
+                                    elements.startProcessModal.style.display = 'none';
+                                    elements.dtNumber.value = '';
+                                    elements.vehicleType.value = '';
+                                    elements.dockNumber.value = '';
+                                }, 1500);
                             });
-
-                            const processRef = db.ref('processos').push();
-                            return processRef.set(newProcess)
-                                .then(() => {
-                                    showFeedback('Processo criado com sucesso! Usando tempo de separação existente.', 'success', 'startProcessFeedback');
-                                    setTimeout(() => {
-                                        elements.startProcessModal.style.display = 'none';
-                                        elements.dtNumber.value = '';
-                                        elements.vehicleType.value = '';
-                                        elements.dockNumber.value = '';
-                                    }, 1500);
-                                });
-                        }
                     }
 
-                    // Se não encontrou uma separação existente ou não é um carregamento, cria normalmente
+                    // Se não for carregamento ou não encontrou separação existente, cria normalmente
                     const newProcess = {
                         dtNumber,
                         vehicleType,
