@@ -188,6 +188,7 @@
         let timers = {};
         let pauseTimers = {};
         let currentAssistants = [];
+        let lastUpdate = 0;
 
         // Elementos da página
         const elements = {
@@ -287,7 +288,7 @@
         }
 
         function loadActiveProcesses() {
-            db.ref('processos').orderByChild('createdBy').equalTo(currentUser.uid).on('value', snapshot => {
+            db.ref('processos').on('value', snapshot => {  // Removido o filtro por createdBy
                 processes = {};
                 if (snapshot.exists()) {
                     snapshot.forEach(processSnapshot => {
@@ -302,15 +303,12 @@
                                 const pauseTime = processData.totalPauseTime || 0;
                                 startProcessTimer(processSnapshot.key, processData.startTime || Date.now(), pauseTime);
                             } else if (processData.status === 'paused' && !pauseTimers[processSnapshot.key]) {
-                                // Recriar timer de pausa se a página for recarregada
                                 const pauseTimerElement = document.getElementById(`pause-timer-${processSnapshot.key}`);
                                 if (pauseTimerElement) {
                                     pauseTimerElement.style.display = 'block';
-                                    
                                     const totalPauseTime = processData.totalPauseTime || 0;
                                     const currentPauseTime = processData.pauseStartTime ? 
                                         Math.floor((Date.now() - processData.pauseStartTime) / 1000) : 0;
-                                    
                                     pauseTimerElement.textContent = formatTime(totalPauseTime + currentPauseTime);
                                 }
                             }
@@ -320,6 +318,40 @@
                 renderProcessCards();
             });
         }
+
+        function updatePauseTimers() {
+            Object.keys(processes).forEach(processId => {
+                const process = processes[processId];
+                if (process.status === 'paused') {
+                    const pauseTimerElement = document.getElementById(`pause-timer-${processId}`);
+                    if (pauseTimerElement) {
+                        const totalPauseTime = process.totalPauseTime || 0;
+                        const currentPauseTime = process.pauseStartTime ? 
+                            Math.floor((Date.now() - process.pauseStartTime) / 1000) : 0;
+                        pauseTimerElement.textContent = formatTime(totalPauseTime + currentPauseTime);
+                    }
+                }
+            });
+        }
+
+        // Atualiza os timers de pausa a cada segundo
+        setInterval(updatePauseTimers, 1000);
+
+        function updateAllTimers() {
+            Object.keys(processes).forEach(processId => {
+                const process = processes[processId];
+                if (process.status === 'in_progress') {
+                    const timerElement = document.getElementById(`timer-${processId}`);
+                    if (timerElement) {
+                        const elapsed = Math.floor((Date.now() - process.startTime) / 1000) - (process.totalPauseTime || 0);
+                        timerElement.textContent = formatTime(elapsed);
+                    }
+                }
+            });
+        }
+
+        // Atualiza todos os timers a cada segundo
+        setInterval(updateAllTimers, 1000);
 
         function renderProcessCards() {
             elements.processCardsContainer.innerHTML = '';
@@ -334,6 +366,26 @@
                 elements.processCardsContainer.appendChild(card);
             });
         }
+
+        
+        setInterval(() => {
+            updateAllTimers();
+            updatePauseTimers();
+        }, 1000);
+
+        function efficientUpdate() {
+            const now = Date.now();
+            // Só atualiza a cada 500ms para melhor performance
+            if (now - lastUpdate > 500) {
+                updateAllTimers();
+                updatePauseTimers();
+                lastUpdate = now;
+            }
+            requestAnimationFrame(efficientUpdate);
+        }
+
+        // Inicia o loop de atualização
+        efficientUpdate();
 
         function createProcessCard(process) {
             const card = document.createElement('div');
@@ -511,20 +563,8 @@
 
         function addStepButtons(container, process) {
             const stepsOrder = getStepsOrder(process.vehicleType);
-            let currentStepIndex = process.currentStep ? stepsOrder.indexOf(process.currentStep) : -1;
+            const currentStepIndex = process.currentStep ? stepsOrder.indexOf(process.currentStep) : -1;
             
-            // Se for carregamento e separação já estiver concluída, ajusta o currentStepIndex
-            if (process.vehicleType === 'carregamento' && process.separacao?.status === 'completed') {
-                // Remove a etapa de separação da ordem
-                const filteredSteps = stepsOrder.filter(step => step !== 'separacao');
-                currentStepIndex = process.currentStep ? filteredSteps.indexOf(process.currentStep) : -1;
-                
-                // Se o currentStep era separação, vai para vistoria
-                if (currentStepIndex === -1 && process.currentStep === 'separacao') {
-                    currentStepIndex = filteredSteps.indexOf('vistoria');
-                }
-            }
-
             if (currentStepIndex === -1) {
                 // Processo não iniciado
                 const startBtn = document.createElement('button');
@@ -537,35 +577,14 @@
                     startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Separação';
                     startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Separação', 'start', process.id, 'separacao'));
                 } else {
-                    // Se for carregamento com separação já concluída, começa na vistoria
-                    if (process.vehicleType === 'carregamento' && process.separacao?.status === 'completed') {
-                        startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Vistoria';
-                        startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Vistoria', 'start', process.id, 'vistoria'));
-                    } else {
-                        startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Vistoria';
-                        startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Vistoria', 'start', process.id, 'vistoria'));
-                    }
+                    startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Vistoria';
+                    startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Vistoria', 'start', process.id, 'vistoria'));
                 }
                 
                 container.appendChild(startBtn);
             } else {
                 const currentStep = stepsOrder[currentStepIndex];
                 const stepData = process[currentStep];
-                
-                // Se for carregamento com separação concluída, pula a etapa de separação
-                if (process.vehicleType === 'carregamento' && process.separacao?.status === 'completed' && currentStep === 'separacao') {
-                    // Avança para a próxima etapa
-                    const nextStepIndex = currentStepIndex + 1;
-                    if (nextStepIndex < stepsOrder.length) {
-                        const nextStep = stepsOrder[nextStepIndex];
-                        const nextStepBtn = document.createElement('button');
-                        nextStepBtn.className = 'btn primary-btn';
-                        nextStepBtn.innerHTML = `<i class="fas fa-play"></i> Iniciar ${getStepName(nextStep)}`;
-                        nextStepBtn.addEventListener('click', () => showQrCodeModal(`Iniciar ${getStepName(nextStep)}`, 'start', process.id, nextStep));
-                        container.appendChild(nextStepBtn);
-                    }
-                    return;
-                }
                 
                 if (stepData && stepData.status === 'in_progress') {
                     // Etapa em andamento
@@ -744,62 +763,10 @@
                 return;
             }
 
-            // Verifica se já existe uma separação concluída com esta DT
             db.ref('processos').orderByChild('dtNumber').equalTo(dtNumber).once('value')
                 .then(snapshot => {
-                    let existingSeparation = null;
-                    
-                    if (snapshot.exists()) {
-                        snapshot.forEach(processSnapshot => {
-                            const processData = processSnapshot.val();
-                            if (processData.vehicleType === 'separacao' && processData.status === 'completed') {
-                                existingSeparation = processData;
-                            }
-                        });
-                    }
+                    if (snapshot.exists()) throw new Error('Já existe um processo com este número de DT');
 
-                    // Se for carregamento e existir separação concluída com a mesma DT
-                    if (vehicleType === 'carregamento' && existingSeparation) {
-                        // Cria o processo de carregamento com separação já concluída
-                        const newProcess = {
-                            dtNumber,
-                            vehicleType,
-                            dockNumber,
-                            status: 'pending',
-                            createdBy: currentUser.uid,
-                            createdAt: firebase.database.ServerValue.TIMESTAMP,
-                            currentStep: 'vistoria', // Começa na vistoria (pula separação)
-                            totalPauseTime: 0,
-                            // Copia os dados da separação existente
-                            separacao: {
-                                status: 'completed',
-                                startTime: existingSeparation.separacao.startTime,
-                                endTime: existingSeparation.separacao.endTime,
-                                duration: existingSeparation.separacao.duration,
-                                operator: existingSeparation.separacao.operator,
-                                assistants: existingSeparation.separacao.assistants
-                            },
-                            // Inicia as outras etapas como pendentes
-                            vistoria: { status: 'pending' },
-                            abertura: { status: 'pending' },
-                            carregamento: { status: 'pending' },
-                            fechamento: { status: 'pending' }
-                        };
-
-                        const processRef = db.ref('processos').push();
-                        return processRef.set(newProcess)
-                            .then(() => {
-                                showFeedback('Processo criado com sucesso! Separação já concluída.', 'success', 'startProcessFeedback');
-                                setTimeout(() => {
-                                    elements.startProcessModal.style.display = 'none';
-                                    elements.dtNumber.value = '';
-                                    elements.vehicleType.value = '';
-                                    elements.dockNumber.value = '';
-                                }, 1500);
-                            });
-                    }
-
-                    // Se não for carregamento ou não encontrou separação existente, cria normalmente
                     const newProcess = {
                         dtNumber,
                         vehicleType,
