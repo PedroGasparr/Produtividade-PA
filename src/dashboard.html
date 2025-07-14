@@ -3,41 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Processo de Shipment - Sistema PA</title>
+    <title>Processo de Carregamento - Sistema PA</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../css/dahboard.css">
-    <style>
-        .pause-container {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .pause-time {
-            font-size: 0.9em;
-            color: #666;
-            margin-top: 5px;
-        }
-        .btn.warning-btn {
-            background-color: #ffc107;
-            color: #212529;
-        }
-        .btn.success-btn {
-            background-color: #28a745;
-            color: white;
-        }
-        .process-card-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .step-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-    </style>
 </head>
 <body>
     <div class="dashboard-container">
@@ -64,7 +33,7 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="main-header">
-                <h1>Processo de Shipment</h1>
+                <h1>Processo de Carregamento</h1>
                 <div class="user-info">
                     <span id="currentUser">Usuário Logado</span>
                 </div>
@@ -742,10 +711,68 @@
                 return;
             }
 
+            // Primeiro verifica se já existe um processo com esta DT
             db.ref('processos').orderByChild('dtNumber').equalTo(dtNumber).once('value')
                 .then(snapshot => {
-                    if (snapshot.exists()) throw new Error('Já existe um processo com este número de DT');
+                    let existingSeparationProcess = null;
+                    
+                    // Verifica se existe um processo de separação com esta DT
+                    if (snapshot.exists()) {
+                        snapshot.forEach(processSnapshot => {
+                            const processData = processSnapshot.val();
+                            if (processData.vehicleType === 'separacao' && processData.status === 'completed') {
+                                existingSeparationProcess = processData;
+                            }
+                        });
+                    }
 
+                    // Se for um carregamento e existir uma separação com a mesma DT, usa os dados da separação
+                    if (vehicleType === 'carregamento' && existingSeparationProcess) {
+                        // Verifica se a separação tem tempo registrado
+                        if (existingSeparationProcess.separacao && existingSeparationProcess.separacao.duration) {
+                            const separationTime = existingSeparationProcess.separacao.duration;
+                            
+                            const newProcess = {
+                                dtNumber,
+                                vehicleType,
+                                dockNumber,
+                                status: 'pending',
+                                createdBy: currentUser.uid,
+                                createdAt: firebase.database.ServerValue.TIMESTAMP,
+                                currentStep: null,
+                                totalPauseTime: 0,
+                                // Copia o tempo de separação do processo existente
+                                separacao: {
+                                    status: 'completed',
+                                    duration: separationTime,
+                                    // Copia outros dados relevantes se necessário
+                                    ...(existingSeparationProcess.separacao.operator && { operator: existingSeparationProcess.separacao.operator }),
+                                    ...(existingSeparationProcess.separacao.assistants && { assistants: existingSeparationProcess.separacao.assistants })
+                                }
+                            };
+
+                            // Adiciona as outras etapas do carregamento
+                            getStepsOrder(vehicleType).forEach(step => {
+                                if (step !== 'separacao' && !newProcess[step]) {
+                                    newProcess[step] = { status: 'pending' };
+                                }
+                            });
+
+                            const processRef = db.ref('processos').push();
+                            return processRef.set(newProcess)
+                                .then(() => {
+                                    showFeedback('Processo criado com sucesso! Usando tempo de separação existente.', 'success', 'startProcessFeedback');
+                                    setTimeout(() => {
+                                        elements.startProcessModal.style.display = 'none';
+                                        elements.dtNumber.value = '';
+                                        elements.vehicleType.value = '';
+                                        elements.dockNumber.value = '';
+                                    }, 1500);
+                                });
+                        }
+                    }
+
+                    // Se não encontrou uma separação existente ou não é um carregamento, cria normalmente
                     const newProcess = {
                         dtNumber,
                         vehicleType,

@@ -18,7 +18,7 @@
             // Verificar autenticação
             firebase.auth().onAuthStateChanged(user => {
                 if (!user) {
-                    window.location.href = 'index.html';
+                    window.location.href = '../index.html';
                 } else {
                     currentUser = user;
                     document.getElementById('currentUser').textContent = user.displayName || user.email;
@@ -32,7 +32,7 @@
             document.getElementById('refreshBtn').addEventListener('click', loadData);
             document.getElementById('logoutBtn').addEventListener('click', () => {
                 firebase.auth().signOut().then(() => {
-                    window.location.href = 'index.html';
+                    window.location.href = '../index.html';
                 });
             });
         }

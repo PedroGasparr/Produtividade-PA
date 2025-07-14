@@ -67,19 +67,35 @@ body {
   flex-direction: column;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+.pause-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .pause-time {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .btn.warning-btn {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .btn.success-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        .process-card-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .step-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
 /* Botão Hamburger */
 .hamburger-btn {
     display: none;

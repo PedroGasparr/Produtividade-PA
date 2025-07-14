@@ -135,7 +135,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             firebase.auth().onAuthStateChanged(user => {
                 if (!user) {
-                    window.location.href = 'index.html';
+                    window.location.href = '../index.html';
                 } else {
                     currentUser = user;
                     elements.currentUser.textContent = user.displayName || user.email;
@@ -164,7 +164,7 @@
             // Logout button
             elements.logoutBtn.addEventListener('click', () => {
                 firebase.auth().signOut().then(() => {
-                    window.location.href = 'index.html';
+                    window.location.href = '../index.html';
                 });
             });
 
