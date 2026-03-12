@@ -1,110 +1,713 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Produtividade PA</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Sistema de Leitura de Lotes - MP9</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 16px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-align: center;
+        }
+        
+        .machine-selector {
+            background: #f0f4f8;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .machine-selector h3 {
+            color: #4a5568;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+        
+        .machine-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .machine-btn {
+            flex: 1 1 auto;
+            min-width: 70px;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #4a5568;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .machine-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .machine-btn:hover {
+            border-color: #667eea;
+        }
+        
+        .current-machine {
+            background: #48bb78;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .video-container {
+            position: relative;
+            width: 100%;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #000;
+            margin: 16px 0;
+            aspect-ratio: 4/3;
+        }
+        
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .scan-area {
+            position: absolute;
+            top: 20%;
+            left: 10%;
+            width: 80%;
+            height: 30%;
+            border: 3px solid #00ff88;
+            border-radius: 12px;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+            pointer-events: none;
+            animation: pulse 2s infinite;
+        }
+        
+        .scan-area::after {
+            content: 'Posicione o LOTE aqui';
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #00ff88;
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        
+        @keyframes pulse {
+            0% { border-color: #00ff88; }
+            50% { border-color: #00cc66; }
+            100% { border-color: #00ff88; }
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        
+        button {
+            border: none;
+            padding: 14px 24px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .history-section {
+            margin-top: 24px;
+            border-top: 2px solid #e2e8f0;
+            padding-top: 20px;
+        }
+        
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border-radius: 12px;
+            background: #f7fafc;
+        }
+        
+        .history-item {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        
+        .history-item .date {
+            color: #718096;
+        }
+        
+        .history-item .lot {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .history-item .machine {
+            color: #667eea;
+            font-weight: 600;
+            text-align: right;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #718096;
+        }
+        
+        .result-area {
+            background: #f7f7f7;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        #resultText {
+            width: 100%;
+            min-height: 60px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            resize: vertical;
+            margin-bottom: 8px;
+        }
+        
+        .success-message {
+            background: #c6f6d5;
+            color: #22543d;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 8px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .success-message.show {
+            opacity: 1;
+        }
+        
+        .error-message {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 8px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 16px 0;
+            padding: 16px;
+            background: #ebf4ff;
+            border-radius: 12px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #4a5568;
+        }
+    </style>
 </head>
 <body>
-    <div class="auth-container">
-        <div class="auth-card" id="loginCard">
-            <img src="img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo" class="logo">
-            <h1>Bem-vindo ao Sistema PA</h1>
-            <p class="subtitle">Faça login para acessar seu painel</p>
-            
-            <form id="loginForm">
-                <div class="input-group">
-                    <label for="loginEmail">E-mail</label>
-                    <input type="email" id="loginEmail" required placeholder="seu@email.com">
-                </div>
-                
-                <div class="input-group">
-                    <label for="loginPassword">Senha</label>
-                    <div class="password-container">
-                        <input type="password" id="loginPassword" required placeholder="••••••••">
-                        <i class="fas fa-eye toggle-password" data-target="loginPassword"></i>
-                    </div>
-                </div>
-                
-                <button type="submit" class="btn primary-btn">Entrar</button>
-                <button type="button" class="btn google-btn" id="googleLogin">
-                    <i class="fab fa-google"></i> Entrar com Google
+    <div class="container">
+        <h1>📦 Sistema de Leitura de Lotes</h1>
+        
+        <!-- Seletor de Máquina -->
+        <div class="machine-selector">
+            <h3>Selecione a Máquina:</h3>
+            <div class="machine-buttons" id="machineButtons">
+                <button class="machine-btn" onclick="selectMachine('MP9')">MP9</button>
+                <button class="machine-btn" onclick="selectMachine('MP10')">MP10</button>
+                <button class="machine-btn" onclick="selectMachine('MP11')">MP11</button>
+                <button class="machine-btn" onclick="selectMachine('MP12')">MP12</button>
+                <button class="machine-btn" onclick="selectMachine('MP13')">MP13</button>
+            </div>
+            <div class="current-machine" id="currentMachine">
+                Máquina atual: <span id="machineDisplay">MP9</span>
+            </div>
+        </div>
+        
+        <!-- Câmera -->
+        <div class="video-container">
+            <video id="video" playsinline autoplay></video>
+            <div class="scan-area"></div>
+        </div>
+        
+        <!-- Controles -->
+        <div class="controls">
+            <button class="btn-primary" id="startCamera" onclick="startCamera()">
+                📷 Iniciar Câmera
+            </button>
+            <button class="btn-primary" id="captureBtn" onclick="captureAndRecognize()" disabled>
+                🔍 Ler Lote
+            </button>
+        </div>
+        
+        <!-- Resultado Atual -->
+        <div class="result-area">
+            <textarea id="resultText" placeholder="Lote identificado aparecerá aqui..."></textarea>
+            <button class="btn-success" onclick="saveToFirebase()" id="saveBtn" disabled>
+                💾 Salvar Lote
+            </button>
+        </div>
+        
+        <!-- Estatísticas -->
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="totalLotes">0</div>
+                <div class="stat-label">Total de Lotes</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="lotesHoje">0</div>
+                <div class="stat-label">Lotes Hoje</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="maquinaAtual">0</div>
+                <div class="stat-label">desta MP</div>
+            </div>
+        </div>
+        
+        <!-- Histórico -->
+        <div class="history-section">
+            <div class="history-header">
+                <h3>📋 Últimos Lotes</h3>
+                <button class="btn-success" onclick="exportToCSV()" style="padding: 8px 16px; font-size: 14px;">
+                    📥 Exportar CSV
                 </button>
-                
-                <div class="auth-links">
-                    <a href="#" id="showForgotPassword">Esqueci minha senha</a>
-                    <a href="#" id="showRegister">Criar uma conta</a>
-                </div>
-            </form>
+            </div>
+            <div class="history-list" id="historyList">
+                <div class="loading">Carregando histórico...</div>
+            </div>
         </div>
-
-        <div class="auth-card hidden" id="registerCard">
-            <img src="img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo" class="logo">
-            <h1>Criar nova conta</h1>
-            <p class="subtitle">Preencha os dados para se registrar</p>
-            
-            <form id="registerForm">
-                <div class="input-group">
-                    <label for="registerName">Nome completo</label>
-                    <input type="text" id="registerName" required placeholder="Seu nome">
-                </div>
-                
-                <div class="input-group">
-                    <label for="registerEmail">E-mail</label>
-                    <input type="email" id="registerEmail" required placeholder="seu@email.com">
-                </div>
-                
-                <div class="input-group">
-                    <label for="registerPassword">Senha</label>
-                    <div class="password-container">
-                        <input type="password" id="registerPassword" required placeholder="••••••••" minlength="6">
-                        <i class="fas fa-eye toggle-password" data-target="registerPassword"></i>
-                    </div>
-                    <small class="hint">Mínimo de 6 caracteres</small>
-                </div>
-                
-                <div class="input-group">
-                    <label for="registerConfirmPassword">Confirmar senha</label>
-                    <div class="password-container">
-                        <input type="password" id="registerConfirmPassword" required placeholder="••••••••">
-                        <i class="fas fa-eye toggle-password" data-target="registerConfirmPassword"></i>
-                    </div>
-                </div>
-                
-                <button type="submit" class="btn primary-btn">Registrar</button>
-                <div class="auth-links">
-                    <a href="#" id="showLogin">Já tenho uma conta</a>
-                </div>
-            </form>
-        </div>
-
-        <div class="auth-card hidden" id="forgotPasswordCard">
-            <img src="img/GZL - Logos_pages-to-jpg-0001.jpg" alt="Logo" class="logo">
-            <h1>Recuperar senha</h1>
-            <p class="subtitle">Informe seu e-mail para redefinir a senha</p>
-            
-            <form id="forgotPasswordForm">
-                <div class="input-group">
-                    <label for="forgotEmail">E-mail</label>
-                    <input type="email" id="forgotEmail" required placeholder="seu@email.com">
-                </div>
-                
-                <button type="submit" class="btn primary-btn">Enviar link de recuperação</button>
-                <div class="auth-links">
-                    <a href="#" id="showLoginFromForgot">Voltar para login</a>
-                </div>
-            </form>
-        </div>
-
-        <div id="authMessage" class="message hidden"></div>
+        
+        <!-- Mensagens -->
+        <div id="successMessage" class="success-message"></div>
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="js/app.js"></script>
+    <!-- Bibliotecas -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <script>
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBl4x-DV1507mtaSz0uaSXSDFVhePMADUk",
+            authDomain: "brgoldtimes-bb642.firebaseapp.com",
+            databaseURL: "https://brgoldtimes-bb642-default-rtdb.firebaseio.com",
+            projectId: "brgoldtimes-bb642",
+            storageBucket: "brgoldtimes-bb642.firebasestorage.app",
+            messagingSenderId: "1045227964748",
+            appId: "1:1045227964748:web:bf528a57ef3884eeefe7e9",
+            measurementId: "G-8SF67N0D7C"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Variáveis globais
+        let videoStream = null;
+        let isProcessing = false;
+        let currentMachine = 'MP9';
+        let currentDetectedLot = '';
+        let allLotes = [];
+
+        // Elementos DOM
+        const video = document.getElementById('video');
+        const captureBtn = document.getElementById('captureBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const resultText = document.getElementById('resultText');
+        const machineDisplay = document.getElementById('machineDisplay');
+        const machineButtons = document.querySelectorAll('.machine-btn');
+        const historyList = document.getElementById('historyList');
+        const successMessage = document.getElementById('successMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const totalLotesSpan = document.getElementById('totalLotes');
+        const lotesHojeSpan = document.getElementById('lotesHoje');
+        const maquinaAtualSpan = document.getElementById('maquinaAtual');
+
+        // Selecionar máquina
+        function selectMachine(machine) {
+            currentMachine = machine;
+            machineDisplay.textContent = machine;
+            
+            // Atualizar botões
+            document.querySelectorAll('.machine-btn').forEach(btn => {
+                if (btn.textContent === machine) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Atualizar estatísticas
+            updateStats();
+            loadHistory();
+        }
+
+        // Iniciar câmera
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                
+                videoStream = stream;
+                video.srcObject = stream;
+                captureBtn.disabled = false;
+                showError(null);
+                
+            } catch (error) {
+                console.error('Erro ao acessar câmera:', error);
+                showError('Não foi possível acessar a câmera. Verifique as permissões.');
+            }
+        }
+
+        // Capturar e reconhecer lote
+        async function captureAndRecognize() {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            captureBtn.disabled = true;
+            captureBtn.innerHTML = '🔄 Processando...';
+            
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Área de scan
+                const scanArea = {
+                    x: Math.round(canvas.width * 0.1),
+                    y: Math.round(canvas.height * 0.2),
+                    width: Math.round(canvas.width * 0.8),
+                    height: Math.round(canvas.height * 0.3)
+                };
+                
+                const scanImageData = context.getImageData(
+                    scanArea.x, scanArea.y, scanArea.width, scanArea.height
+                );
+                
+                const scanCanvas = document.createElement('canvas');
+                scanCanvas.width = scanArea.width;
+                scanCanvas.height = scanArea.height;
+                const scanContext = scanCanvas.getContext('2d');
+                scanContext.putImageData(scanImageData, 0, 0);
+                
+                const imageDataUrl = scanCanvas.toDataURL('image/jpeg', 0.8);
+                
+                // OCR
+                const { data: { text } } = await Tesseract.recognize(
+                    imageDataUrl,
+                    'por',
+                    {
+                        logger: m => console.log(m),
+                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.-',
+                    }
+                );
+                
+                // Limpar e validar texto
+                const cleanedText = text.trim().replace(/\s+/g, '');
+                
+                if (cleanedText && cleanedText.length >= 5) {
+                    currentDetectedLot = cleanedText;
+                    resultText.value = cleanedText;
+                    saveBtn.disabled = false;
+                    showError(null);
+                    showSuccess('Lote identificado! Clique em Salvar para registrar.');
+                } else {
+                    currentDetectedLot = '';
+                    resultText.value = '';
+                    saveBtn.disabled = true;
+                    showError('Nenhum lote válido identificado. Tente novamente.');
+                }
+                
+            } catch (error) {
+                console.error('Erro no reconhecimento:', error);
+                showError('Erro ao processar a imagem.');
+            } finally {
+                isProcessing = false;
+                captureBtn.disabled = false;
+                captureBtn.innerHTML = '🔍 Ler Lote';
+            }
+        }
+
+        // Salvar no Firebase
+        async function saveToFirebase() {
+            if (!currentDetectedLot) {
+                showError('Nenhum lote para salvar!');
+                return;
+            }
+
+            const now = new Date();
+            const dataHora = now.toLocaleString('pt-BR');
+            const dataISO = now.toISOString();
+            
+            const loteData = {
+                dataHora: dataHora,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                dataISO: dataISO,
+                lote: currentDetectedLot,
+                maquina: currentMachine,
+                data: now.toLocaleDateString('pt-BR'),
+                hora: now.toLocaleTimeString('pt-BR')
+            };
+
+            try {
+                // Salvar no Firestore
+                await db.collection('lotes').add(loteData);
+                
+                showSuccess('✅ Lote salvo com sucesso!');
+                currentDetectedLot = '';
+                resultText.value = '';
+                saveBtn.disabled = true;
+                
+                // Atualizar histórico e estatísticas
+                loadHistory();
+                updateStats();
+                
+            } catch (error) {
+                console.error('Erro ao salvar:', error);
+                showError('Erro ao salvar no banco de dados.');
+            }
+        }
+
+        // Carregar histórico
+        async function loadHistory() {
+            try {
+                const snapshot = await db.collection('lotes')
+                    .orderBy('timestamp', 'desc')
+                    .limit(20)
+                    .get();
+                
+                if (snapshot.empty) {
+                    historyList.innerHTML = '<div class="loading">Nenhum lote registrado ainda.</div>';
+                    return;
+                }
+
+                let html = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    html += `
+                        <div class="history-item">
+                            <span class="date">${data.data || ''}</span>
+                            <span class="lot">${data.lote || ''}</span>
+                            <span class="machine">${data.maquina || ''}</span>
+                        </div>
+                    `;
+                });
+                
+                historyList.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Erro ao carregar histórico:', error);
+                historyList.innerHTML = '<div class="loading">Erro ao carregar histórico.</div>';
+            }
+        }
+
+        // Atualizar estatísticas
+        async function updateStats() {
+            try {
+                // Total de lotes
+                const totalSnapshot = await db.collection('lotes').count().get();
+                totalLotesSpan.textContent = totalSnapshot.data().count || 0;
+                
+                // Lotes de hoje
+                const hoje = new Date();
+                hoje.setHours(0, 0, 0, 0);
+                const hojeISO = hoje.toISOString();
+                
+                const hojeSnapshot = await db.collection('lotes')
+                    .where('dataISO', '>=', hojeISO)
+                    .count()
+                    .get();
+                lotesHojeSpan.textContent = hojeSnapshot.data().count || 0;
+                
+                // Lotes da máquina atual
+                const maquinaSnapshot = await db.collection('lotes')
+                    .where('maquina', '==', currentMachine)
+                    .count()
+                    .get();
+                maquinaAtualSpan.textContent = maquinaSnapshot.data().count || 0;
+                
+            } catch (error) {
+                console.error('Erro ao atualizar estatísticas:', error);
+            }
+        }
+
+        // Exportar para CSV
+        async function exportToCSV() {
+            try {
+                const snapshot = await db.collection('lotes')
+                    .orderBy('timestamp', 'desc')
+                    .get();
+                
+                let csv = 'Data,Hora,Lote,Máquina\n';
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    csv += `${data.data || ''},${data.hora || ''},${data.lote || ''},${data.maquina || ''}\n`;
+                });
+                
+                // Download
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `lotes_${new Date().toISOString()}.csv`;
+                a.click();
+                
+                showSuccess('Arquivo CSV exportado!');
+                
+            } catch (error) {
+                console.error('Erro ao exportar:', error);
+                showError('Erro ao exportar CSV.');
+            }
+        }
+
+        // Mostrar mensagem de sucesso
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.classList.add('show');
+            setTimeout(() => {
+                successMessage.classList.remove('show');
+            }, 3000);
+        }
+
+        // Mostrar erro
+        function showError(message) {
+            if (message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+            } else {
+                errorMessage.style.display = 'none';
+            }
+        }
+
+        // Inicializar
+        window.addEventListener('load', () => {
+            selectMachine('MP9');
+            loadHistory();
+            updateStats();
+        });
+
+        // Limpar recursos
+        window.addEventListener('beforeunload', () => {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+        });
+    </script>
 </body>
 </html>
